@@ -127,3 +127,28 @@ clipboard:     works y/n / error
 overlay:       lines up y/n, sharp y/n, crop correct y/n, covers panels y/n, Esc y/n
 tray:          icon y/n
 ```
+
+### Ubuntu GNOME (Qt 6.4.2), 2026-10-15
+
+One 2256x1504 laptop panel at 125%.
+
+```
+report:        no layer-shell, no data-control, no screencopy, no foreign-toplevel;
+               fractional-scale v1, xdg-activation v1;
+               Screenshot portal v2 (no targets), ScreenCast v5, Notification v1,
+               no GlobalShortcuts portal
+screenshot:    first ever call 4.5 s with a permission dialog; afterwards ~0.5 s, no dialog.
+               Each shot is saved as ~/Pictures/Screenshot-N.png
+interactive:   not tested
+target window: not offered (portal v2)
+shortcuts:     portal missing; bind the CLI in GNOME custom shortcuts
+clipboard:     fails (no data-control); needs the notification "Copy URL" fallback
+overlay:       lines up y, sharp y, crop correct y, covers top bar y, Qt reports DPR 2 at 125%
+tray:          registers with the AppIndicator host
+```
+
+What this changes for M1:
+
+- The portal remembers the permission after the first grant, so capture costs about half a second. The overlay must appear as soon as the image arrives.
+- GNOME's portal writes every screenshot into `~/Pictures`. Gorgon reads it, then deletes it, and saves its own copy where the user configured.
+- Window capture on this desktop goes through the portal's interactive picker.
