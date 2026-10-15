@@ -1,0 +1,18 @@
+[package]
+name = "gorgon-overlay-spike"
+version = "0.0.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+publish = false
+description = "M0 spike: frozen-screen overlay, Rust QQuickPaintedItem and tray"
+
+[dependencies]
+ashpd = { version = "0.13.13", features = ["screenshot"] }
+cxx = "1.0.205"
+cxx-qt = "0.10.0"
+cxx-qt-lib = { version = "0.10.0", features = ["qt_gui", "qt_qml"] }
+image = { version = "0.25.10", default-features = false, features = ["png"] }
+tokio = { version = "1.53.3", features = ["rt"] }
+
+[build-dependencies]
+cxx-qt-build = "0.10.0"
