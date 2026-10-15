@@ -32,7 +32,12 @@ QtObject {
             originX: root.minX
             originY: root.minY
             imageScale: root.capture.imageWidth / root.desktopWidth
-            onFinished: root.selecting = false
+            onFinished: {
+                root.selecting = false
+                // Without the tray there is nothing left to do.
+                if (!root.tray)
+                    Qt.quit()
+            }
         }
     }
 
