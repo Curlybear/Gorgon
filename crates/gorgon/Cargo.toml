@@ -1,0 +1,25 @@
+[package]
+name = "gorgon"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+publish = false
+description = "Screenshot and upload tool for Wayland"
+
+[dependencies]
+anyhow = "1.0.104"
+ashpd = { version = "0.13.13", features = ["global_shortcuts"] }
+clap = { version = "4.6.7", features = ["derive"] }
+cxx = "1.0.205"
+cxx-qt = "0.10.0"
+cxx-qt-lib = { version = "0.10.0", features = ["qt_gui", "qt_qml"] }
+futures-util = "0.3.34"
+gorgon-core = { path = "../gorgon-core" }
+image = { version = "0.25.10", default-features = false }
+ksni = "0.3.6"
+notify-rust = "4.18.2"
+tokio = { version = "1.53.3", features = ["rt-multi-thread", "macros", "time"] }
+zbus = "5.19.0"
+
+[build-dependencies]
+cxx-qt-build = "0.10.0"

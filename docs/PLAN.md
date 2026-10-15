@@ -130,7 +130,7 @@ Every capture and its result goes into history, failed uploads included, with a 
 - Setting the clipboard from a background app on each DE
 - Window capture: portal interactive vs ScreenCast single frame
 
-**M1: Capture**: daemon, tray, CLI over D-Bus, region / fullscreen / window capture, freeze overlay, save to disk, copy image, notification, hotkeys.
+**M1: Capture** (in progress, first version on main): daemon, tray, CLI over D-Bus, region / fullscreen / window capture, freeze overlay, save to disk, copy image, notification, hotkeys.
 
 **M2: Editor**: all v1 tools, undo/redo, export, "capture and edit" path.
 

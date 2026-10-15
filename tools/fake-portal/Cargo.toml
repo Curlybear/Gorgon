@@ -1,0 +1,11 @@
+[package]
+name = "fake-portal"
+version = "0.0.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+publish = false
+description = "A stand-in Screenshot portal for testing Gorgon without a desktop"
+
+[dependencies]
+tokio = { version = "1.53.3", features = ["rt-multi-thread", "macros", "time"] }
+zbus = "5.19.0"

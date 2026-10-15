@@ -1,0 +1,29 @@
+#include "gorgon/qt_helpers.h"
+
+#include <QClipboard>
+#include <QGuiApplication>
+#include <QImage>
+
+namespace gorgon {
+
+bool set_clipboard_image(rust::Slice<const std::uint8_t> rgba, std::int32_t width,
+                         std::int32_t height) {
+  if (width <= 0 || height <= 0 ||
+      rgba.size() != static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4) {
+    return false;
+  }
+  QClipboard* clipboard = QGuiApplication::clipboard();
+  if (clipboard == nullptr) {
+    return false;
+  }
+  const QImage view(rgba.data(), width, height, width * 4, QImage::Format_RGBA8888);
+  // copy(): the clipboard must own its pixels, the Rust buffer goes away.
+  clipboard->setImage(view.copy());
+  return true;
+}
+
+void keep_running_without_windows() {
+  QGuiApplication::setQuitOnLastWindowClosed(false);
+}
+
+}  // namespace gorgon

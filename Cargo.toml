@@ -1,3 +1,3 @@
 [workspace]
 resolver = "2"
-members = ["spikes/probe", "spikes/overlay"]
+members = ["crates/*", "spikes/probe", "spikes/overlay", "tools/fake-portal"]
