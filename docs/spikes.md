@@ -4,19 +4,59 @@ Small throwaway programs that answer the risky questions in [PLAN.md](PLAN.md#mi
 
 ## Build
 
-Needs Rust (stable), Qt 6 with Qt Quick, and a Wayland session with xdg-desktop-portal running.
+You need a Wayland session with xdg-desktop-portal running (any modern KDE, GNOME, Hyprland or Sway setup has it), plus a C++ compiler, Qt 6 with Qt Quick, and Rust.
 
-| Distro | Packages |
-|---|---|
-| Arch | `qt6-base qt6-declarative` |
-| Fedora | `qt6-qtbase-devel qt6-qtdeclarative-devel` |
-| Debian / Ubuntu | `qt6-base-dev qt6-declarative-dev qml6-module-qtquick qml6-module-qtquick-window qml6-module-qtqml-workerscript qml6-module-qt-labs-platform` |
+### 1. Install system packages
 
-If `qmake` isn't Qt 6's, point the build at it, for example `export QMAKE=/usr/lib/qt6/bin/qmake`.
+Arch / Manjaro / EndeavourOS:
 
 ```sh
+sudo pacman -S --needed base-devel git rustup qt6-base qt6-declarative
+```
+
+Fedora:
+
+```sh
+sudo dnf install gcc-c++ git curl qt6-qtbase-devel qt6-qtdeclarative-devel
+```
+
+Debian 13 / Ubuntu 24.04 or newer:
+
+```sh
+sudo apt install build-essential git curl qt6-base-dev qt6-declarative-dev \
+  qml6-module-qtquick qml6-module-qtquick-window qml6-module-qtqml-workerscript \
+  qml6-module-qt-labs-platform
+```
+
+### 2. Install Rust
+
+On Arch, `rustup` came from pacman above. Elsewhere, install it from rustup.rs:
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh   # skip on Arch
+rustup default stable
+```
+
+Open a new terminal afterwards (or `source ~/.cargo/env`) so `cargo` is on your PATH.
+
+### 3. Point the build at Qt 6's qmake
+
+The build finds Qt through `qmake`. If `qmake --version` already says Qt 6, skip this. Otherwise:
+
+```sh
+export QMAKE=qmake6                      # Arch, Fedora
+export QMAKE=/usr/lib/qt6/bin/qmake      # Debian / Ubuntu
+```
+
+### 4. Build
+
+```sh
+git clone https://github.com/Curlybear/Gorgon.git
+cd Gorgon
 cargo build --release
 ```
+
+The first build takes a few minutes. The programs end up in `target/release/`.
 
 ## What to run
 
