@@ -31,6 +31,11 @@ pub mod qobject {
         #[cxx_name = "saveCrop"]
         fn save_crop(self: Pin<&mut Capture>, x: f64, y: f64, w: f64, h: f64) -> QString;
 
+        /// Shows a StatusNotifierItem tray icon whose click starts a capture.
+        #[qinvokable]
+        #[cxx_name = "startTray"]
+        fn start_tray(self: Pin<&mut Capture>) -> bool;
+
         /// Prints what Qt reports for a screen, to compare with the image size.
         #[qinvokable]
         #[cxx_name = "reportScreen"]
@@ -44,13 +49,16 @@ pub mod qobject {
             device_pixel_ratio: f64,
         );
     }
+
+    impl cxx_qt::Threading for Capture {}
 }
 
 use std::{path::PathBuf, pin::Pin, time::Instant};
 
 use ashpd::desktop::screenshot::Screenshot;
-use cxx_qt::CxxQtType;
+use cxx_qt::{CxxQtThread, CxxQtType, Threading};
 use cxx_qt_lib::{QString, QUrl};
+use ksni::blocking::TrayMethods;
 
 #[derive(Default)]
 pub struct CaptureRust {
@@ -59,6 +67,55 @@ pub struct CaptureRust {
     image_height: i32,
     status: QString,
     path: Option<PathBuf>,
+    tray: Option<ksni::blocking::Handle<GorgonTray>>,
+}
+
+/// Tray icon, implemented in Rust over D-Bus rather than through Qt.
+pub struct GorgonTray {
+    qt: CxxQtThread<qobject::Capture>,
+}
+
+impl GorgonTray {
+    fn request_capture(&self) {
+        if let Err(e) = self.qt.queue(|capture| capture.capture()) {
+            eprintln!("could not reach the UI thread: {e:?}");
+        }
+    }
+}
+
+impl ksni::Tray for GorgonTray {
+    fn id(&self) -> String {
+        "gorgon-spike".into()
+    }
+
+    fn title(&self) -> String {
+        "Gorgon spike".into()
+    }
+
+    fn icon_name(&self) -> String {
+        "camera-photo".into()
+    }
+
+    fn activate(&mut self, _x: i32, _y: i32) {
+        self.request_capture();
+    }
+
+    fn menu(&self) -> Vec<ksni::MenuItem<Self>> {
+        vec![
+            ksni::menu::StandardItem {
+                label: "Capture region".into(),
+                activate: Box::new(|tray: &mut Self| tray.request_capture()),
+                ..Default::default()
+            }
+            .into(),
+            ksni::menu::StandardItem {
+                label: "Quit".into(),
+                activate: Box::new(|_: &mut Self| std::process::exit(0)),
+                ..Default::default()
+            }
+            .into(),
+        ]
+    }
 }
 
 impl qobject::Capture {
@@ -123,6 +180,23 @@ impl qobject::Capture {
             Err(e) => {
                 eprintln!("crop failed: {e}");
                 QString::default()
+            }
+        }
+    }
+
+    pub fn start_tray(mut self: Pin<&mut Self>) -> bool {
+        let tray = GorgonTray {
+            qt: self.qt_thread(),
+        };
+        match tray.spawn() {
+            Ok(handle) => {
+                println!("tray icon registered");
+                self.as_mut().rust_mut().tray = Some(handle);
+                true
+            }
+            Err(e) => {
+                eprintln!("tray failed: {e}");
+                false
             }
         }
     }

@@ -6,7 +6,7 @@ QtObject {
     id: root
 
     property bool selecting: false
-    property var tray: null
+    property bool inTray: false
 
     // Logical bounds of the whole desktop, to map screens onto the screenshot.
     readonly property var screens: Array.from(Qt.application.screens)
@@ -35,7 +35,7 @@ QtObject {
             onFinished: {
                 root.selecting = false
                 // Without the tray there is nothing left to do.
-                if (!root.tray)
+                if (!root.inTray)
                     Qt.quit()
             }
         }
@@ -48,14 +48,9 @@ QtObject {
 
     Component.onCompleted: {
         if (Qt.application.arguments.indexOf("--tray") >= 0) {
-            // Separate file so a missing Qt.labs.platform module only disables the tray.
-            const component = Qt.createComponent("Tray.qml")
-            if (component.status === Component.Ready) {
-                tray = component.createObject(root)
-                tray.captureRequested.connect(startCapture)
-            } else {
-                console.warn("tray unavailable:", component.errorString())
-            }
+            inTray = capture.startTray()
+            if (!inTray)
+                Qt.quit()
         } else {
             startCapture()
         }

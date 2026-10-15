@@ -24,8 +24,7 @@ Debian 13 / Ubuntu 24.04 or newer:
 
 ```sh
 sudo apt install build-essential git curl qt6-base-dev qt6-declarative-dev \
-  qml6-module-qtquick qml6-module-qtquick-window qml6-module-qtqml-workerscript \
-  qml6-module-qt-labs-platform
+  qml6-module-qtquick qml6-module-qtquick-window qml6-module-qtqml-workerscript
 ```
 
 ### 2. Install Rust
@@ -107,7 +106,7 @@ Takes a screenshot, then covers every monitor with it. Drag a region; it's saved
 - Mixed scales (for example 100% and 150%): is it sharp, and is the saved crop exactly what you selected?
 - Does the overlay cover panels and docks, or do they stay on top?
 - Does Esc work straight away (keyboard focus)?
-- With `--tray`: does an icon appear?
+- With `--tray`: does an icon appear, and does clicking it (or its menu) start a capture? If it prints `tray failed: ... StatusNotifierWatcher`, your desktop has no tray host: on GNOME that means the AppIndicator extension is off (Ubuntu ships it on by default).
 
 Set `GORGON_SPIKE_IMAGE=/path/to.png` to skip the portal and use a fixed image.
 
