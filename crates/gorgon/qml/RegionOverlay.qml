@@ -86,7 +86,7 @@ Window {
         style: Text.Outline
         styleColor: "black"
         font.pixelSize: 16
-        text: "Drag to capture · Esc or right-click to cancel"
+        text: (win.app.forRecording ? "Drag the area to record" : "Drag to capture") + " · Esc or right-click to cancel"
     }
 
     MouseArea {

@@ -8,7 +8,7 @@ Capture a region, window or screen, annotate it, upload it to your own server th
 
 ## Try it
 
-Gorgon is at milestone 2: capture a region, a screen or a window, annotate it in the editor, save it, copy it, get a notification. Uploading comes in milestone 3.
+Gorgon is at milestone 4: capture a region, a screen or a window, annotate it in the editor, record a region to MP4 or GIF, upload it to your server and copy the link.
 
 Install the build dependencies listed in [docs/spikes.md](docs/spikes.md#build), then:
 
@@ -22,13 +22,15 @@ This puts `gorgon` in `~/.cargo/bin`. Then:
 gorgon capture region          # or screen, window
 gorgon capture region --edit   # open the editor before saving
 gorgon edit picture.png        # annotate an existing image
+gorgon record mp4              # or gif; drag a region, then...
+gorgon record stop             # ...stop (or run the same record command again)
 ```
 
 The first command starts Gorgon in the tray; later ones reuse it. You can also start it yourself with plain `gorgon`.
 
 ### Keyboard shortcuts
 
-On KDE, Hyprland and GNOME 48 or newer, Gorgon registers Ctrl+Print (region), Print (screen), Alt+Print (window) and Ctrl+Shift+Print (region, then edit) itself; your desktop asks you to confirm them.
+On KDE, Hyprland and GNOME 48 or newer, Gorgon registers Ctrl+Print (region), Print (screen), Alt+Print (window) and Ctrl+Shift+Print (region, then edit), Shift+Print (record a region to MP4) and Alt+Shift+Print (record a region to GIF) itself; press a record shortcut again to stop; your desktop asks you to confirm them.
 
 On older GNOME and on Sway, bind the commands yourself. On GNOME: Settings, Keyboard, View and Customize Shortcuts, Custom Shortcuts, then add one per mode with the full path as the command, for example `/home/you/.cargo/bin/gorgon capture region`. GNOME's own screenshot tool owns Print by default, so free that key first under Screenshots if you want it.
 
@@ -37,6 +39,18 @@ On older GNOME and on Sway, bind the commands yourself. On GNOME: Settings, Keyb
 Opens after `--edit` captures, from the notification's Edit button, or after every capture with `open_editor = true`. Tools have one-key shortcuts: V select, R rectangle, E ellipse, A arrow, L line, P pen, T text, H highlighter, B blur, X pixelate, C crop. Ctrl+Z / Ctrl+Shift+Z undo and redo, Delete removes the selected shape, Enter copies and saves, Esc discards. The bar at the bottom shows the zoom; type a percentage there, or use Ctrl+wheel, Ctrl+plus/minus, Ctrl+0 to fit and Ctrl+1 for actual pixels. Scroll, drag empty space with the Select tool, middle-drag or Space+drag to move around a zoomed-in capture.
 
 Blur and pixelate are baked into the saved pixels, so the original text can't be recovered from the file.
+
+### Recording
+
+Shift+Print, Alt+Shift+Print, the tray menu or `gorgon record mp4|gif` freeze the screen so you can drag the area to record. The first time, your desktop asks which screen to share; Gorgon remembers the answer. While recording, the tray icon turns red and a notification offers Stop. The file lands in `save_dir` and goes through the same upload and history as captures.
+
+Recording needs GStreamer at runtime:
+
+```sh
+sudo apt install gstreamer1.0-tools gstreamer1.0-pipewire gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly
+```
+
+Without the "ugly" plugins (x264), Gorgon falls back to OpenH264 or WebM. GIFs are encoded with gifski.
 
 ### History and settings
 
@@ -63,6 +77,8 @@ image_uploader = "XBackBone"             # set by `gorgon uploader import`
 shorten = true                           # when url_shortener is set
 url_shortener = "Kutt"
 copy_url = true                          # the link replaces the copied image
+video_fps = 30                           # MP4 recordings
+gif_fps = 15                             # GIF recordings
 ```
 
 ### Uploading and short links
@@ -105,4 +121,4 @@ When the CLI starts Gorgon, its output goes to `$XDG_RUNTIME_DIR/gorgon/daemon.l
 
 ## License
 
-GPL-3.0-or-later. See [LICENSE](LICENSE).
+GPL-3.0-or-later. See [LICENSE](LICENSE). Builds link gifski, which is AGPL-3.0-or-later; GPLv3 section 13 allows that combination, and the AGPL terms then apply to gifski within the binary.

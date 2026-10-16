@@ -123,8 +123,8 @@ Window {
 
                 Image {
                     anchors.fill: parent
-                    visible: row.e.exists
-                    source: row.e.exists ? row.e.fileUrl : ""
+                    visible: row.e.exists && !row.e.video
+                    source: row.e.exists && !row.e.video ? row.e.fileUrl : ""
                     sourceSize.width: 300
                     sourceSize.height: 184
                     fillMode: Image.PreserveAspectFit
@@ -133,8 +133,8 @@ Window {
                 }
                 Text {
                     anchors.centerIn: parent
-                    visible: !row.e.exists
-                    text: "File missing"
+                    visible: !row.e.exists || row.e.video
+                    text: row.e.exists ? "▶ Video" : "File missing"
                     color: "#6b6f77"
                     font.pixelSize: 12
                 }
@@ -212,7 +212,7 @@ Window {
                         }
                     }
                     ToolButton {
-                        visible: row.e.exists
+                        visible: row.e.exists && row.e.editable
                         label: "Edit"
                         onClicked: history.edit(row.e.id)
                     }

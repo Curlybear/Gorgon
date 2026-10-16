@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use gorgon_core::config::Config;
+use gorgon_core::{config::Config, record::Format};
 use notify_rust::{Notification, Timeout};
 
 use crate::pipeline::Links;
@@ -18,15 +18,23 @@ pub fn saved(path: &Path, copied: bool) {
         } else {
             format!("Saved to {}", path.display())
         };
-        let shown = Notification::new()
-            .appname(APP_NAME)
-            .summary("Screenshot captured")
+        let recording = is_recording_file(&path);
+        let mut note = Notification::new();
+        note.appname(APP_NAME)
+            .summary(if recording {
+                "Recording saved"
+            } else {
+                "Screenshot captured"
+            })
             .body(&body)
             .icon("camera-photo")
-            .image_path(&path.display().to_string())
             .action("default", "Open")
-            .action("open", "Open")
-            .action("edit", "Edit")
+            .action("open", "Open");
+        if !recording {
+            note.image_path(&path.display().to_string())
+                .action("edit", "Edit");
+        }
+        let shown = note
             .action("folder", "Show in folder")
             .timeout(Timeout::Milliseconds(6000))
             .show();
@@ -65,7 +73,11 @@ pub fn uploaded(path: &Path, links: &Links, copied: bool) {
         }
         let shown = Notification::new()
             .appname(APP_NAME)
-            .summary("Screenshot uploaded")
+            .summary(if is_recording_file(&path) {
+                "Recording uploaded"
+            } else {
+                "Screenshot uploaded"
+            })
             .body(&body)
             .icon("camera-photo")
             .image_path(&path.display().to_string())
@@ -129,6 +141,56 @@ pub fn upload_failed(path: &Path, message: &str, id: Option<u64>) {
     });
 }
 
+static RECORDING_NOTE: std::sync::Mutex<Option<u32>> = std::sync::Mutex::new(None);
+
+/// Stays up while recording, with a Stop button.
+pub fn recording(format: Format) {
+    std::thread::spawn(move || {
+        let what = match format {
+            Format::Mp4 => "video",
+            Format::Gif => "GIF",
+        };
+        let shown = Notification::new()
+            .appname(APP_NAME)
+            .summary(&format!("Recording {what}"))
+            .body("Press the same shortcut again, or Stop, to finish.")
+            .icon("media-record")
+            .action("stop", "Stop")
+            .timeout(Timeout::Never)
+            .show();
+        match shown {
+            Ok(handle) => {
+                if let Ok(mut id) = RECORDING_NOTE.lock() {
+                    *id = Some(handle.id());
+                }
+                handle.wait_for_action(|action| {
+                    if action == "stop" {
+                        crate::recorder::stop();
+                    }
+                });
+            }
+            Err(e) => eprintln!("notification failed: {e}"),
+        }
+    });
+}
+
+/// Replaces the "Recording" notification once it has stopped.
+pub fn recording_stopped() {
+    let Some(id) = RECORDING_NOTE.lock().ok().and_then(|mut id| id.take()) else {
+        return;
+    };
+    std::thread::spawn(move || {
+        let _ = Notification::new()
+            .appname(APP_NAME)
+            .id(id)
+            .summary("Recording stopped")
+            .body("Saving…")
+            .icon("media-record")
+            .timeout(Timeout::Milliseconds(1500))
+            .show();
+    });
+}
+
 pub fn error(message: &str) {
     eprintln!("error: {message}");
     let message = message.to_owned();
@@ -143,6 +205,11 @@ pub fn error(message: &str) {
             eprintln!("notification failed: {e}");
         }
     });
+}
+
+fn is_recording_file(path: &Path) -> bool {
+    path.extension()
+        .is_some_and(|e| e == "mp4" || e == "webm" || e == "gif")
 }
 
 fn open_url(url: &str) {

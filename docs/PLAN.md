@@ -136,7 +136,7 @@ Every capture and its result goes into history, failed uploads included, with a 
 
 **M3: Upload** (done: `.sxcu` uploads, shortening, URL copy, CLI, History and Settings windows): `.sxcu` import and execution, XBackBone + Kutt working end to end, URL copy, history window, settings UI for the pipeline. **This is the MVP: daily-usable.**
 
-**M4: Recording**: region GIF and MP4, stop hotkey, recording indicator, same upload pipeline.
+**M4: Recording** (done, 2026-10-16): region GIF and MP4 through the ScreenCast portal and GStreamer, gifski for GIFs, stop hotkey (same shortcut again, `gorgon record stop`, or the notification), tray icon and notification as the indicator, same upload pipeline and history. An on-screen border around the recorded area was skipped: GNOME doesn't let apps position windows.
 
 **M5: Going public**: packaging (whichever works best by then), README with screenshots, CI building releases, sample `.sxcu` files.
 

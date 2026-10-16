@@ -23,6 +23,13 @@ pub mod qobject {
         #[qproperty(QUrl, image_url, cxx_name = "imageUrl")]
         #[qproperty(i32, image_width, cxx_name = "imageWidth")]
         #[qproperty(i32, image_height, cxx_name = "imageHeight")]
+        /// Set by QML: screenshot pixels per logical pixel, and the desktop's
+        /// top-left corner, to place a recorded region on its monitor.
+        #[qproperty(f64, image_scale, cxx_name = "imageScale")]
+        #[qproperty(f64, origin_x, cxx_name = "originX")]
+        #[qproperty(f64, origin_y, cxx_name = "originY")]
+        /// True while a region is being picked for a recording.
+        #[qproperty(bool, for_recording, cxx_name = "forRecording")]
         type App = super::AppRust;
 
         /// Show the frozen screenshot and let the user drag a region.
@@ -103,6 +110,7 @@ use gorgon_core::{
     config::Config,
     history, naming,
     output::{self, Rect},
+    record::Format,
     CaptureMode,
 };
 use image::RgbaImage;
@@ -124,6 +132,11 @@ fn queue_on_ui(f: impl FnOnce(Pin<&mut qobject::App>) + Send + 'static) -> Resul
 /// Asks the UI thread to start a capture. Safe to call from any thread.
 pub fn request_capture(mode: CaptureMode, edit: bool) -> Result<(), String> {
     queue_on_ui(move |app| app.start(mode, edit))
+}
+
+/// Picks a region on a frozen screenshot, then records it.
+pub fn request_record(format: Format) -> Result<(), String> {
+    queue_on_ui(move |app| app.start_record(format))
 }
 
 /// Opens the "history" or "settings" window. Safe to call from any thread.
@@ -264,6 +277,12 @@ pub struct AppRust {
     image_url: QUrl,
     image_width: i32,
     image_height: i32,
+    image_scale: f64,
+    origin_x: f64,
+    origin_y: f64,
+    for_recording: bool,
+    /// Record the picked region instead of saving a screenshot.
+    record: Option<Format>,
     busy: bool,
     config: Config,
     /// Screenshot being worked on, in Gorgon's runtime folder.
@@ -292,6 +311,16 @@ impl qobject::App {
             pending.push_back((image, config));
         }
         self.open_editor();
+    }
+
+    fn start_record(mut self: Pin<&mut Self>, format: Format) {
+        if self.busy {
+            eprintln!("a capture is already in progress");
+            return;
+        }
+        self.as_mut().rust_mut().record = Some(format);
+        self.as_mut().set_for_recording(true);
+        self.start(CaptureMode::Region, false);
     }
 
     fn start(mut self: Pin<&mut Self>, mode: CaptureMode, edit: bool) {
@@ -326,6 +355,8 @@ impl qobject::App {
             Err(e) => {
                 notify::error(&e.to_string());
                 self.as_mut().rust_mut().busy = false;
+                self.as_mut().rust_mut().record = None;
+                self.as_mut().set_for_recording(false);
                 return;
             }
         };
@@ -371,11 +402,15 @@ impl qobject::App {
     }
 
     pub fn cancel(mut self: Pin<&mut Self>) {
-        let mut rust = self.as_mut().rust_mut();
-        if let Some(path) = rust.current.take() {
-            discard(&path);
+        {
+            let mut rust = self.as_mut().rust_mut();
+            if let Some(path) = rust.current.take() {
+                discard(&path);
+            }
+            rust.busy = false;
+            rust.record = None;
         }
-        rust.busy = false;
+        self.set_for_recording(false);
     }
 
     fn finish(mut self: Pin<&mut Self>, rect: Option<Rect>) {
@@ -387,6 +422,21 @@ impl qobject::App {
         let Some(source) = source else {
             return;
         };
+        if let Some(format) = self.as_mut().rust_mut().record.take() {
+            self.as_mut().set_for_recording(false);
+            discard(&source);
+            let Some(region) = rect else { return };
+            let desktop = crate::recorder::Desktop {
+                scale: if self.image_scale > 0.0 {
+                    self.image_scale
+                } else {
+                    1.0
+                },
+                origin: (self.origin_x, self.origin_y),
+            };
+            crate::recorder::start(format, region, desktop, config);
+            return;
+        }
         let image = output::load(&source, rect);
         discard(&source);
         let image = match image {

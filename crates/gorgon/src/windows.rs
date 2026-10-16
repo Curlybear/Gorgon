@@ -117,6 +117,11 @@ impl qobject::HistoryModel {
             .into_iter()
             .rev()
             .map(|e| {
+                let ext = e
+                    .path
+                    .extension()
+                    .map(|x| x.to_string_lossy().to_ascii_lowercase())
+                    .unwrap_or_default();
                 serde_json::json!({
                     "id": e.id.to_string(),
                     "time": e.time,
@@ -125,6 +130,8 @@ impl qobject::HistoryModel {
                     "fileUrl": format!("file://{}", e.path.display()),
                     "folderUrl": e.path.parent().map(|d| format!("file://{}", d.display())),
                     "exists": e.path.exists(),
+                    "video": ext == "mp4" || ext == "webm",
+                    "editable": ext == "png" || ext == "jpg" || ext == "jpeg",
                     "width": e.width,
                     "height": e.height,
                     "url": e.url,

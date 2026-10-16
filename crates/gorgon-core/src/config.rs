@@ -27,6 +27,10 @@ pub struct Config {
     pub url_shortener: Option<String>,
     /// Copy the final link to the clipboard (it replaces the copied image).
     pub copy_url: bool,
+    /// Frames per second for MP4 recordings.
+    pub video_fps: u32,
+    /// Frames per second for GIF recordings.
+    pub gif_fps: u32,
 }
 
 impl Default for Config {
@@ -45,6 +49,8 @@ impl Default for Config {
             shorten: true,
             url_shortener: None,
             copy_url: true,
+            video_fps: 30,
+            gif_fps: 15,
         }
     }
 }

@@ -43,6 +43,20 @@ pub async fn edit(path: &Path) -> Result<()> {
     Ok(())
 }
 
+pub async fn record(what: &str) -> Result<()> {
+    let conn = connect().await?;
+    conn.call_method(
+        Some(dbus::NAME),
+        dbus::PATH,
+        Some(dbus::INTERFACE),
+        "Record",
+        &(what,),
+    )
+    .await
+    .context("the Gorgon daemon couldn't record")?;
+    Ok(())
+}
+
 pub async fn show_window(name: &str) -> Result<()> {
     let conn = connect().await?;
     conn.call_method(

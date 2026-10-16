@@ -10,6 +10,7 @@ mod editor;
 mod notify;
 mod outputs;
 mod pipeline;
+mod recorder;
 mod selection;
 mod shortcuts;
 mod tray;
@@ -43,6 +44,11 @@ enum Command {
     },
     /// Open an image in the editor
     Edit { file: std::path::PathBuf },
+    /// Record a region: mp4 or gif (again, or `stop`, to finish)
+    Record {
+        #[arg(value_parser = ["mp4", "gif", "stop"])]
+        what: String,
+    },
     /// Show past captures and their links
     History,
     /// Open the settings window
@@ -102,6 +108,7 @@ fn main() -> ExitCode {
         Command::Capture { mode, edit } => report(runtime().block_on(client::capture(mode, edit))),
         Command::Edit { file } => report(runtime().block_on(client::edit(&file))),
         Command::Daemon => daemon(),
+        Command::Record { what } => report(runtime().block_on(client::record(&what))),
         Command::History => report(runtime().block_on(client::show_window("history"))),
         Command::Settings => report(runtime().block_on(client::show_window("settings"))),
         Command::Upload {

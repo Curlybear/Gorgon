@@ -18,6 +18,9 @@ QtObject {
         Math.max(...screens.map(s => s.virtualX + s.width)) - minX
 
     property App app: App {
+        imageScale: imageWidth / root.desktopWidth
+        originX: root.minX
+        originY: root.minY
         onSelectRegion: root.selecting = true
         onOpenEditor: editorList.append({})
         onCopyRequested: root.grabbing = true

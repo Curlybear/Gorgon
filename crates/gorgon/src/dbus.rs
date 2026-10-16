@@ -17,6 +17,17 @@ impl Service {
         crate::app::request_capture(mode, edit).map_err(fdo::Error::Failed)
     }
 
+    /// Records a region: "mp4" or "gif" start (or stop a running recording),
+    /// "stop" stops.
+    fn record(&self, what: &str) -> fdo::Result<()> {
+        if what == "stop" {
+            crate::recorder::stop();
+            return Ok(());
+        }
+        let format = what.parse().map_err(fdo::Error::InvalidArgs)?;
+        crate::recorder::toggle(format).map_err(fdo::Error::Failed)
+    }
+
     /// Opens a window: "history" or "settings".
     fn show_window(&self, name: &str) -> fdo::Result<()> {
         let name = match name {

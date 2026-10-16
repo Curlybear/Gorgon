@@ -7,6 +7,7 @@ pub mod config;
 pub mod history;
 pub mod naming;
 pub mod output;
+pub mod record;
 pub mod sxcu;
 pub mod upload;
 pub mod uploaders;

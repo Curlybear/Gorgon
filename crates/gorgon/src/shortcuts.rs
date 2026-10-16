@@ -5,45 +5,60 @@ use ashpd::desktop::{
     CreateSessionOptions,
 };
 use futures_util::StreamExt;
-use gorgon_core::CaptureMode;
+use gorgon_core::{record::Format, CaptureMode};
 
 struct Binding {
     id: &'static str,
     description: &'static str,
     trigger: &'static str,
-    mode: CaptureMode,
-    edit: bool,
+    action: Action,
 }
 
-/// ShareX's defaults, plus Ctrl+Shift+Print to capture a region and edit it.
+#[derive(Clone, Copy)]
+enum Action {
+    Capture(CaptureMode, bool),
+    /// Starts a recording, or stops the running one.
+    Record(Format),
+}
+
+/// ShareX's defaults, plus Ctrl+Shift+Print to capture a region and edit it,
+/// and Shift+Print / Alt+Shift+Print to record.
 const SHORTCUTS: &[Binding] = &[
     Binding {
         id: "capture-region",
         description: "Capture region",
         trigger: "CTRL+Print",
-        mode: CaptureMode::Region,
-        edit: false,
+        action: Action::Capture(CaptureMode::Region, false),
     },
     Binding {
         id: "capture-screen",
         description: "Capture screen",
         trigger: "Print",
-        mode: CaptureMode::Screen,
-        edit: false,
+        action: Action::Capture(CaptureMode::Screen, false),
     },
     Binding {
         id: "capture-window",
         description: "Capture window",
         trigger: "ALT+Print",
-        mode: CaptureMode::Window,
-        edit: false,
+        action: Action::Capture(CaptureMode::Window, false),
     },
     Binding {
         id: "capture-region-edit",
         description: "Capture region and edit",
         trigger: "CTRL+SHIFT+Print",
-        mode: CaptureMode::Region,
-        edit: true,
+        action: Action::Capture(CaptureMode::Region, true),
+    },
+    Binding {
+        id: "record-video",
+        description: "Record region as video (again to stop)",
+        trigger: "SHIFT+Print",
+        action: Action::Record(Format::Mp4),
+    },
+    Binding {
+        id: "record-gif",
+        description: "Record region as GIF (again to stop)",
+        trigger: "ALT+SHIFT+Print",
+        action: Action::Record(Format::Gif),
     },
 ];
 
@@ -76,7 +91,11 @@ async fn register() -> ashpd::Result<()> {
     let mut activated = portal.receive_activated().await?;
     while let Some(event) = activated.next().await {
         if let Some(b) = SHORTCUTS.iter().find(|b| b.id == event.shortcut_id()) {
-            if let Err(e) = crate::app::request_capture(b.mode, b.edit) {
+            let result = match b.action {
+                Action::Capture(mode, edit) => crate::app::request_capture(mode, edit),
+                Action::Record(format) => crate::recorder::toggle(format),
+            };
+            if let Err(e) = result {
                 eprintln!("{e}");
             }
         }
