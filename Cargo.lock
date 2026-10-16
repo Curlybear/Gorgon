@@ -919,6 +919,8 @@ dependencies = [
  "ksni",
  "notify-rust",
  "tokio",
+ "wayland-client",
+ "wayland-protocols",
  "zbus",
 ]
 

@@ -8,6 +8,7 @@ mod client;
 mod dbus;
 mod editor;
 mod notify;
+mod outputs;
 mod selection;
 mod shortcuts;
 mod tray;

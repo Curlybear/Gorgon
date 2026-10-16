@@ -28,6 +28,11 @@ pub mod qobject {
         #[qproperty(f64, stroke_width, cxx_name = "strokeWidth")]
         #[qproperty(f64, font_size, cxx_name = "fontSize")]
         #[qproperty(f64, pixel_ratio, cxx_name = "pixelRatio")]
+        /// Name of the screen the window is on (`Screen.name`).
+        #[qproperty(QString, screen_name, cxx_name = "screenName")]
+        /// Screen pixels per logical pixel, from the compositor when it says,
+        /// else `pixelRatio`. Read-only from QML.
+        #[qproperty(f64, screen_scale, cxx_name = "screenScale")]
         #[qproperty(bool, can_undo, cxx_name = "canUndo")]
         #[qproperty(bool, can_redo, cxx_name = "canRedo")]
         #[qproperty(bool, has_selection, cxx_name = "hasSelection")]
@@ -152,8 +157,10 @@ pub struct EditorCanvasRust {
     color: QString,
     stroke_width: f64,
     font_size: f64,
-    /// Device pixels per logical pixel, so captures show 1:1 at most.
+    /// Qt's device pixel ratio, the fallback for `screen_scale`.
     pixel_ratio: f64,
+    screen_name: QString,
+    screen_scale: f64,
     can_undo: bool,
     can_redo: bool,
     has_selection: bool,
@@ -178,6 +185,8 @@ impl Default for EditorCanvasRust {
             stroke_width: 4.0,
             font_size: 28.0,
             pixel_ratio: 1.0,
+            screen_name: QString::default(),
+            screen_scale: 1.0,
             can_undo: false,
             can_redo: false,
             has_selection: false,
@@ -202,7 +211,10 @@ impl Default for EditorCanvasRust {
 impl cxx_qt::Initialize for qobject::EditorCanvas {
     fn initialize(mut self: Pin<&mut Self>) {
         self.as_mut()
-            .on_pixel_ratio_changed(|canvas| canvas.relayout())
+            .on_pixel_ratio_changed(|canvas| canvas.update_screen_scale())
+            .release();
+        self.as_mut()
+            .on_screen_name_changed(|canvas| canvas.update_screen_scale())
             .release();
         self.on_tool_changed(|mut canvas| {
             // Switching tools drops the selection.
@@ -318,7 +330,19 @@ impl qobject::EditorCanvas {
     }
 
     fn dpr(&self) -> f64 {
-        self.pixel_ratio.max(0.1)
+        self.screen_scale.max(0.1)
+    }
+
+    fn update_screen_scale(mut self: Pin<&mut Self>) {
+        let name = self.screen_name.to_string();
+        let compositor = crate::outputs::scale_of(&name);
+        eprintln!(
+            "editor: screen {name:?}, Qt pixel ratio {}, compositor scale {compositor:?}",
+            self.pixel_ratio
+        );
+        let scale = compositor.unwrap_or(self.pixel_ratio);
+        self.as_mut().set_screen_scale(scale);
+        self.relayout();
     }
 
     /// Switches to a manual view at `scale`, keeping the image point under
@@ -386,7 +410,7 @@ impl qobject::EditorCanvas {
         self.as_mut().set_image_width(w);
         self.as_mut().set_image_height(h);
         self.as_mut().set_fitted(true);
-        self.as_mut().relayout();
+        self.as_mut().update_screen_scale();
         self.changed();
         true
     }

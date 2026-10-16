@@ -19,6 +19,8 @@ image = { version = "0.25.10", default-features = false }
 ksni = "0.3.6"
 notify-rust = "4.18.2"
 tokio = { version = "1.53.3", features = ["rt-multi-thread", "macros", "time"] }
+wayland-client = "0.31.15"
+wayland-protocols = { version = "0.32.13", features = ["client", "unstable"] }
 zbus = "5.19.0"
 
 [build-dependencies]

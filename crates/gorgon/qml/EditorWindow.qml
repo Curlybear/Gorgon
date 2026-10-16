@@ -52,8 +52,8 @@ Window {
         const margin = 2 * canvas.anchors.margins
         const chromeW = margin
         const chromeH = toolbar.height + zoombar.height + margin
-        const imgW = canvas.imageWidth / Screen.devicePixelRatio
-        const imgH = canvas.imageHeight / Screen.devicePixelRatio
+        const imgW = canvas.imageWidth / canvas.screenScale
+        const imgH = canvas.imageHeight / canvas.screenScale
         const maxW = Screen.desktopAvailableWidth * 0.95
         const maxH = Screen.desktopAvailableHeight * 0.95
         const s = Math.min(1, (maxW - chromeW) / imgW, (maxH - chromeH) / imgH)
@@ -186,6 +186,7 @@ Window {
     EditorCanvas {
         id: canvas
         pixelRatio: Screen.devicePixelRatio
+        screenName: Screen.name
         anchors.top: toolbar.bottom
         anchors.left: parent.left
         anchors.right: parent.right
@@ -263,7 +264,7 @@ Window {
             visible: false
             color: canvas.color
             // The canvas may be scaled down; match the size the text will have.
-            font.pixelSize: Math.max(8, canvas.fontSize * canvas.zoom / 100 / Math.max(0.1, canvas.pixelRatio))
+            font.pixelSize: Math.max(8, canvas.fontSize * canvas.zoom / 100 / Math.max(0.1, canvas.screenScale))
             selectByMouse: true
             Keys.onReturnPressed: event => {
                 if (event.modifiers & Qt.ShiftModifier) {
