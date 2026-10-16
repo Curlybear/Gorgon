@@ -45,6 +45,7 @@ Window {
     }
 
     onClosing: closed()
+    onActiveChanged: if (!active) pointer.spaceHeld = false
     // Show the capture at its real size. When it is too big, maximize for a
     // capture as wide as the screen, otherwise shrink the window to the
     // largest size that fits, keeping the capture's shape.
@@ -206,17 +207,19 @@ Window {
 
         MouseArea {
             id: pointer
-            // Middle-button drag scrolls a zoomed-in capture.
+            // Middle-button drag, or Space + drag, scrolls a zoomed-in capture.
             property point panFrom
             property bool panning: false
+            property bool spaceHeld: false
 
             anchors.fill: parent
             acceptedButtons: Qt.LeftButton | Qt.MiddleButton
             cursorShape: panning ? Qt.ClosedHandCursor
+                       : spaceHeld ? Qt.OpenHandCursor
                        : canvas.tool === "select" ? Qt.ArrowCursor
                        : canvas.tool === "text" ? Qt.IBeamCursor : Qt.CrossCursor
             onPressed: event => {
-                if (event.button === Qt.MiddleButton) {
+                if (event.button === Qt.MiddleButton || spaceHeld) {
                     win.commitText()
                     panning = true
                     panFrom = Qt.point(event.x, event.y)
@@ -304,6 +307,7 @@ Window {
             anchors.left: parent.left
             anchors.leftMargin: 12
             text: canvas.imageWidth + " × " + canvas.imageHeight
+                  + (canvas.fitted ? "" : "   ·   scroll or Space+drag to move around")
             color: "#a0a4ab"
             font.pixelSize: 13
         }
@@ -377,7 +381,18 @@ Window {
     Item {
         id: keys
         focus: true
+        Keys.onReleased: event => {
+            if (event.key === Qt.Key_Space && !event.isAutoRepeat) {
+                pointer.spaceHeld = false
+                event.accepted = true
+            }
+        }
         Keys.onPressed: event => {
+            if (event.key === Qt.Key_Space) {
+                pointer.spaceHeld = true
+                event.accepted = true
+                return
+            }
             const ctrl = event.modifiers & Qt.ControlModifier
             const shift = event.modifiers & Qt.ShiftModifier
             if (ctrl && event.key === Qt.Key_Z) {
