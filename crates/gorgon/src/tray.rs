@@ -49,9 +49,17 @@ impl ksni::Tray for GorgonTray {
             item("Capture screen", || capture(CaptureMode::Screen)),
             item("Capture window", || capture(CaptureMode::Window)),
             MenuItem::Separator,
+            item("History", || window("history")),
+            item("Settings", || window("settings")),
             item("Open captures folder", open_captures_folder),
             item("Quit", || std::process::exit(0)),
         ]
+    }
+}
+
+fn window(name: &'static str) {
+    if let Err(e) = crate::app::request_window(name) {
+        eprintln!("{e}");
     }
 }
 

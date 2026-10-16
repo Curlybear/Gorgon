@@ -39,6 +39,16 @@ pub mod qobject {
         #[cxx_name = "openEditor"]
         fn open_editor(self: Pin<&mut App>);
 
+        /// The capture history changed on disk.
+        #[qsignal]
+        #[cxx_name = "historyUpdated"]
+        fn history_updated(self: Pin<&mut App>);
+
+        /// Asks QML to open the History or Settings window.
+        #[qsignal]
+        #[cxx_name = "showWindow"]
+        fn show_window(self: Pin<&mut App>, name: &QString);
+
         /// Text is waiting to be copied: QML shows a tiny window to get the
         /// focus the clipboard needs, then calls `copyPending`.
         #[qsignal]
@@ -91,7 +101,7 @@ use cxx_qt_lib::{QString, QUrl};
 use gorgon_core::{
     capture::{self, CaptureError},
     config::Config,
-    naming,
+    history, naming,
     output::{self, Rect},
     CaptureMode,
 };
@@ -116,6 +126,11 @@ pub fn request_capture(mode: CaptureMode, edit: bool) -> Result<(), String> {
     queue_on_ui(move |app| app.start(mode, edit))
 }
 
+/// Opens the "history" or "settings" window. Safe to call from any thread.
+pub fn request_window(name: &'static str) -> Result<(), String> {
+    queue_on_ui(move |app| app.show_window(&QString::from(name)))
+}
+
 /// Opens an existing image in the editor. Safe to call from any thread.
 pub fn request_edit_file(path: PathBuf) -> Result<(), String> {
     let image = image::open(&path)
@@ -133,6 +148,11 @@ pub fn take_pending_edit() -> Option<(RgbaImage, Config)> {
 /// Copies to the clipboard. Only works while a Gorgon window has focus.
 pub fn copy_to_clipboard(image: &RgbaImage) -> bool {
     qobject::set_clipboard_image(image.as_raw(), image.width() as i32, image.height() as i32)
+}
+
+/// Copies text right away. Only works while a Gorgon window has focus.
+pub fn copy_text_now(text: &str) {
+    qobject::set_clipboard_text(text);
 }
 
 /// Text waiting for a focused window to be copied, and who wants to know.
@@ -178,13 +198,35 @@ pub fn deliver(image: RgbaImage, config: Config, copied: bool) {
             return;
         }
         println!("saved {}", path.display());
-        upload_saved(path, config, copied);
+        let entry = history::Entry::new(&path, image.width(), image.height());
+        let id = history::add(entry)
+            .inspect_err(|e| eprintln!("history: {e}"))
+            .ok();
+        history_changed();
+        upload_saved(path, config, copied, id);
     });
 }
 
 /// Uploads a saved capture per the settings and notifies. Blocks.
-pub fn upload_saved(path: PathBuf, config: Config, copied_image: bool) {
-    match crate::pipeline::upload(&path, &config) {
+pub fn upload_saved(path: PathBuf, config: Config, copied_image: bool, id: Option<u64>) {
+    let result = crate::pipeline::upload(&path, &config);
+    if let (Some(id), Some(result)) = (id, &result) {
+        let uploader = config.image_uploader.clone();
+        let recorded = history::update(id, |e| match result {
+            Ok(links) => {
+                e.url = Some(links.url.clone());
+                e.deletion_url = links.deletion_url.clone();
+                e.uploader = uploader;
+                e.error = None;
+            }
+            Err(err) => e.error = Some(err.clone()),
+        });
+        if let Err(e) = recorded {
+            eprintln!("history: {e}");
+        }
+        history_changed();
+    }
+    match result {
         None => {
             if config.notify {
                 notify::saved(&path, copied_image);
@@ -203,8 +245,13 @@ pub fn upload_saved(path: PathBuf, config: Config, copied_image: bool) {
                 notify::uploaded(&path, &links, copied);
             }
         }
-        Some(Err(e)) => notify::upload_failed(&path, &e),
+        Some(Err(e)) => notify::upload_failed(&path, &e, id),
     }
+}
+
+/// Tells open History windows to reload.
+pub fn history_changed() {
+    let _ = queue_on_ui(|app| app.history_updated());
 }
 
 /// Removes a file, ignoring "already gone".

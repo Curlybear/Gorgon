@@ -97,7 +97,7 @@ pub fn uploaded(path: &Path, links: &Links, copied: bool) {
 }
 
 /// The capture was saved but the upload failed: offers to retry.
-pub fn upload_failed(path: &Path, message: &str) {
+pub fn upload_failed(path: &Path, message: &str, id: Option<u64>) {
     eprintln!("upload failed: {message}");
     let path = path.to_owned();
     let message = message.to_owned();
@@ -115,7 +115,7 @@ pub fn upload_failed(path: &Path, message: &str) {
             Ok(handle) => handle.wait_for_action(|action| match action {
                 "retry" => {
                     let config = Config::load().unwrap_or_default();
-                    crate::app::upload_saved(path.clone(), config, false);
+                    crate::app::upload_saved(path.clone(), config, false, id);
                 }
                 "folder" => {
                     if let Some(dir) = path.parent() {

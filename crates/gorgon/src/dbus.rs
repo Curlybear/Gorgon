@@ -17,6 +17,16 @@ impl Service {
         crate::app::request_capture(mode, edit).map_err(fdo::Error::Failed)
     }
 
+    /// Opens a window: "history" or "settings".
+    fn show_window(&self, name: &str) -> fdo::Result<()> {
+        let name = match name {
+            "history" => "history",
+            "settings" => "settings",
+            other => return Err(fdo::Error::InvalidArgs(format!("unknown window {other:?}"))),
+        };
+        crate::app::request_window(name).map_err(fdo::Error::Failed)
+    }
+
     /// Opens an image file in the editor.
     fn edit_file(&self, path: &str) -> fdo::Result<()> {
         crate::app::request_edit_file(path.into()).map_err(fdo::Error::Failed)

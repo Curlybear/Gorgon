@@ -13,12 +13,15 @@ clap = { version = "4.6.7", features = ["derive"] }
 cxx = "1.0.205"
 cxx-qt = "0.10.0"
 cxx-qt-lib = { version = "0.10.0", features = ["qt_gui", "qt_qml"] }
+dirs = "7.0.0"
 futures-util = "0.3.34"
 gorgon-core = { path = "../gorgon-core" }
 image = { version = "0.25.10", default-features = false }
 ksni = "0.3.6"
 notify-rust = "4.18.2"
+serde_json = "1.0.154"
 tokio = { version = "1.53.3", features = ["rt-multi-thread", "macros", "time"] }
+toml_edit = "0.25.17"
 wayland-client = "0.31.15"
 wayland-protocols = { version = "0.32.13", features = ["client", "unstable"] }
 zbus = "5.19.0"

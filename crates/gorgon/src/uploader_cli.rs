@@ -4,7 +4,7 @@
 use std::path::Path;
 
 use anyhow::{bail, Context, Result};
-use gorgon_core::{config, config::Config, sxcu::Uploader, upload, uploaders};
+use gorgon_core::{config, config::Config, history, sxcu::Uploader, upload, uploaders};
 
 pub fn upload(file: &Path, with: Option<&str>, no_shorten: bool) -> Result<()> {
     let config = Config::load()?;
@@ -16,7 +16,21 @@ pub fn upload(file: &Path, with: Option<&str>, no_shorten: bool) -> Result<()> {
     } else {
         config.url_shortener.as_deref()
     };
-    let links = crate::pipeline::upload_with(file, name, shortener).map_err(anyhow::Error::msg)?;
+    let (w, h) = image::image_dimensions(file).unwrap_or((0, 0));
+    let path = std::fs::canonicalize(file).unwrap_or_else(|_| file.to_owned());
+    let id = history::add(history::Entry::new(&path, w, h)).ok();
+    let result = crate::pipeline::upload_with(file, name, shortener);
+    if let Some(id) = id {
+        let _ = history::update(id, |e| match &result {
+            Ok(links) => {
+                e.url = Some(links.url.clone());
+                e.deletion_url = links.deletion_url.clone();
+                e.uploader = Some(name.to_owned());
+            }
+            Err(err) => e.error = Some(err.clone()),
+        });
+    }
+    let links = result.map_err(anyhow::Error::msg)?;
     if let Some(e) = &links.shorten_error {
         eprintln!("gorgon: shortening failed, keeping the long link: {e}");
     }

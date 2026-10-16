@@ -43,6 +43,20 @@ pub async fn edit(path: &Path) -> Result<()> {
     Ok(())
 }
 
+pub async fn show_window(name: &str) -> Result<()> {
+    let conn = connect().await?;
+    conn.call_method(
+        Some(dbus::NAME),
+        dbus::PATH,
+        Some(dbus::INTERFACE),
+        "ShowWindow",
+        &(name,),
+    )
+    .await
+    .context("the Gorgon daemon couldn't open the window")?;
+    Ok(())
+}
+
 /// Connects to the session bus, starting the daemon if it isn't running.
 async fn connect() -> Result<Connection> {
     let conn = Connection::session()

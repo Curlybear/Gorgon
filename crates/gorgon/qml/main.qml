@@ -21,6 +21,7 @@ QtObject {
         onSelectRegion: root.selecting = true
         onOpenEditor: editorList.append({})
         onCopyRequested: root.grabbing = true
+        onShowWindow: name => root.showWindow(name)
         onFlash: {
             root.flashHandled = false
             root.flashing = true
@@ -48,6 +49,30 @@ QtObject {
             required property int index
             onClosed: Qt.callLater(() => root.editorList.remove(index))
         }
+    }
+
+    // One History and one Settings window at most; asking again raises it.
+    property var openWindows: ({})
+    property Component historyWindow: Component { HistoryWindow {} }
+    property Component settingsWindow: Component { SettingsWindow {} }
+
+    function showWindow(name) {
+        let w = openWindows[name]
+        if (!w) {
+            const component = name === "history" ? historyWindow : settingsWindow
+            w = name === "history" ? component.createObject(null, { app: root.app })
+                                   : component.createObject(null)
+            if (!w)
+                return
+            openWindows[name] = w
+            w.closed.connect(() => {
+                delete openWindows[name]
+                Qt.callLater(() => w.destroy())
+            })
+        }
+        w.show()
+        w.raise()
+        w.requestActivate()
     }
 
     property Instantiator clipboardGrab: Instantiator {

@@ -134,7 +134,7 @@ Every capture and its result goes into history, failed uploads included, with a 
 
 **M2: Editor** (first version on main): all v1 tools, undo/redo, export, "capture and edit" path.
 
-**M3: Upload** (`.sxcu` uploads, shortening, URL copy and CLI on main; history and settings UI next): `.sxcu` import and execution, XBackBone + Kutt working end to end, URL copy, history window, settings UI for the pipeline. **This is the MVP: daily-usable.**
+**M3: Upload** (done: `.sxcu` uploads, shortening, URL copy, CLI, History and Settings windows): `.sxcu` import and execution, XBackBone + Kutt working end to end, URL copy, history window, settings UI for the pipeline. **This is the MVP: daily-usable.**
 
 **M4: Recording**: region GIF and MP4, stop hotkey, recording indicator, same upload pipeline.
 

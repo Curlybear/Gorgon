@@ -159,6 +159,18 @@ pub fn find_in(dir: &Path, name: &str) -> Result<Uploader, StoreError> {
         .ok_or_else(|| StoreError::Missing(name.to_owned()))
 }
 
+/// Deletes a stored uploader by name.
+pub fn remove(name: &str) -> Result<(), StoreError> {
+    let dir = dir()?;
+    let (ok, _) = list_in(&dir)?;
+    let uploader = ok
+        .iter()
+        .find(|u| u.name.eq_ignore_ascii_case(name))
+        .ok_or_else(|| StoreError::Missing(name.to_owned()))?;
+    let path = dir.join(format!("{}.sxcu", file_stem(&uploader.name)));
+    fs::remove_file(&path).map_err(|e| StoreError::Write { path, source: e })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

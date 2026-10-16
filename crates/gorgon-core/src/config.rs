@@ -94,11 +94,16 @@ impl Config {
 /// Sets one key in the settings file, keeping the rest of it (comments
 /// included) as written. Creates the file if needed.
 pub fn set_value(key: &str, value: impl Into<toml_edit::Value>) -> Result<PathBuf, ConfigError> {
+    set_values(vec![(key.to_owned(), Some(value.into()))])
+}
+
+/// Sets several keys at once; `None` removes a key (back to its default).
+pub fn set_values(values: Vec<(String, Option<toml_edit::Value>)>) -> Result<PathBuf, ConfigError> {
     let path = Config::path().ok_or_else(|| ConfigError::Read {
         path: PathBuf::from("~/.config/gorgon/config.toml"),
         source: std::io::Error::other("no config folder"),
     })?;
-    set_value_in(&path, key, value)?;
+    set_values_in(&path, values)?;
     Ok(path)
 }
 
@@ -106,6 +111,13 @@ pub fn set_value_in(
     path: &Path,
     key: &str,
     value: impl Into<toml_edit::Value>,
+) -> Result<(), ConfigError> {
+    set_values_in(path, vec![(key.to_owned(), Some(value.into()))])
+}
+
+pub fn set_values_in(
+    path: &Path,
+    values: Vec<(String, Option<toml_edit::Value>)>,
 ) -> Result<(), ConfigError> {
     let text = match std::fs::read_to_string(path) {
         Ok(t) => t,
@@ -123,7 +135,14 @@ pub fn set_value_in(
                 path: path.to_owned(),
                 source: std::io::Error::other(e.to_string()),
             })?;
-    doc[key] = toml_edit::value(value);
+    for (key, value) in values {
+        match value {
+            Some(v) => doc[key.as_str()] = toml_edit::value(v),
+            None => {
+                doc.remove(&key);
+            }
+        }
+    }
     let write = || {
         if let Some(dir) = path.parent() {
             std::fs::create_dir_all(dir)?;

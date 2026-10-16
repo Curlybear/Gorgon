@@ -4,6 +4,7 @@
 pub mod annotate;
 pub mod capture;
 pub mod config;
+pub mod history;
 pub mod naming;
 pub mod output;
 pub mod sxcu;

@@ -38,9 +38,19 @@ Opens after `--edit` captures, from the notification's Edit button, or after eve
 
 Blur and pixelate are baked into the saved pixels, so the original text can't be recovered from the file.
 
+### History and settings
+
+`gorgon history` (or History in the tray menu) lists past captures with
+thumbnails and links: copy or open a link, upload again after a failure,
+edit, show in folder, or delete. It lives in
+`~/.local/share/gorgon/history.json`.
+
+`gorgon settings` (or Settings in the tray menu) edits everything below and
+imports, picks and removes uploaders (drop `.sxcu` files on it).
+
 ### Settings
 
-Optional, in `~/.config/gorgon/config.toml`:
+In `~/.config/gorgon/config.toml`, also editable from the Settings window:
 
 ```toml
 save_dir = "~/Pictures/Gorgon"           # default

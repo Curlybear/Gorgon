@@ -46,7 +46,7 @@ pub fn runtime_dir() -> std::io::Result<PathBuf> {
 }
 
 /// Turns `file:///a%20b.png` into `/a b.png`.
-fn file_uri_to_path(uri: &str) -> Option<PathBuf> {
+pub fn file_uri_to_path(uri: &str) -> Option<PathBuf> {
     let encoded = uri.strip_prefix("file://")?;
     let bytes = encoded.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());

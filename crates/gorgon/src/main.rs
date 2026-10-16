@@ -14,6 +14,7 @@ mod selection;
 mod shortcuts;
 mod tray;
 mod uploader_cli;
+mod windows;
 
 use std::{process::ExitCode, sync::OnceLock};
 
@@ -42,6 +43,10 @@ enum Command {
     },
     /// Open an image in the editor
     Edit { file: std::path::PathBuf },
+    /// Show past captures and their links
+    History,
+    /// Open the settings window
+    Settings,
     /// Upload a file and print its link (shortened if a shortener is set)
     Upload {
         file: std::path::PathBuf,
@@ -97,6 +102,8 @@ fn main() -> ExitCode {
         Command::Capture { mode, edit } => report(runtime().block_on(client::capture(mode, edit))),
         Command::Edit { file } => report(runtime().block_on(client::edit(&file))),
         Command::Daemon => daemon(),
+        Command::History => report(runtime().block_on(client::show_window("history"))),
+        Command::Settings => report(runtime().block_on(client::show_window("settings"))),
         Command::Upload {
             file,
             with,
