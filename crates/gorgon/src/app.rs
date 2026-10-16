@@ -15,6 +15,7 @@ pub mod qobject {
         fn set_clipboard_image(rgba: &[u8], width: i32, height: i32) -> bool;
         fn set_clipboard_text(text: &str);
         fn keep_running_without_windows();
+        fn set_app_identity(desktop_file: &str, icon_path: &str);
     }
 
     extern "RustQt" {
@@ -130,6 +131,12 @@ fn queue_on_ui(f: impl FnOnce(Pin<&mut qobject::App>) + Send + 'static) -> Resul
 }
 
 /// Asks the UI thread to start a capture. Safe to call from any thread.
+/// Names Gorgon's desktop entry and icon for its windows (docks, Alt+Tab).
+pub fn set_identity() {
+    let icon = crate::icons::path().unwrap_or_default();
+    qobject::set_app_identity(crate::icons::NAME, &icon.to_string_lossy());
+}
+
 pub fn request_capture(mode: CaptureMode, edit: bool) -> Result<(), String> {
     queue_on_ui(move |app| app.start(mode, edit))
 }

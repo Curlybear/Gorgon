@@ -3,7 +3,7 @@
 use std::path::Path;
 
 use gorgon_core::{config::Config, record::Format};
-use notify_rust::{Notification, Timeout};
+use notify_rust::{Hint, Notification, Timeout};
 
 use crate::pipeline::Links;
 
@@ -21,13 +21,14 @@ pub fn saved(path: &Path, copied: bool) {
         let recording = is_recording_file(&path);
         let mut note = Notification::new();
         note.appname(APP_NAME)
+            .hint(Hint::DesktopEntry(crate::icons::NAME.into()))
             .summary(if recording {
                 "Recording saved"
             } else {
                 "Screenshot captured"
             })
             .body(&body)
-            .icon("camera-photo")
+            .icon(crate::icons::NAME)
             .action("default", "Open")
             .action("open", "Open");
         if !recording {
@@ -73,13 +74,14 @@ pub fn uploaded(path: &Path, links: &Links, copied: bool) {
         }
         let shown = Notification::new()
             .appname(APP_NAME)
+            .hint(Hint::DesktopEntry(crate::icons::NAME.into()))
             .summary(if is_recording_file(&path) {
                 "Recording uploaded"
             } else {
                 "Screenshot uploaded"
             })
             .body(&body)
-            .icon("camera-photo")
+            .icon(crate::icons::NAME)
             .image_path(&path.display().to_string())
             .action("default", "Open link")
             .action("copy", "Copy link")
@@ -116,6 +118,7 @@ pub fn upload_failed(path: &Path, message: &str, id: Option<u64>) {
     std::thread::spawn(move || {
         let shown = Notification::new()
             .appname(APP_NAME)
+            .hint(Hint::DesktopEntry(crate::icons::NAME.into()))
             .summary("Upload failed")
             .body(&format!("{message}\nSaved to {}", path.display()))
             .icon("dialog-error")
@@ -152,6 +155,7 @@ pub fn recording(format: Format) {
         };
         let shown = Notification::new()
             .appname(APP_NAME)
+            .hint(Hint::DesktopEntry(crate::icons::NAME.into()))
             .summary(&format!("Recording {what}"))
             .body("Press the same shortcut again, or Stop, to finish.")
             .icon("media-record")
@@ -182,6 +186,7 @@ pub fn recording_stopped() {
     std::thread::spawn(move || {
         let _ = Notification::new()
             .appname(APP_NAME)
+            .hint(Hint::DesktopEntry(crate::icons::NAME.into()))
             .id(id)
             .summary("Recording stopped")
             .body("Saving…")
@@ -197,6 +202,7 @@ pub fn error(message: &str) {
     std::thread::spawn(move || {
         if let Err(e) = Notification::new()
             .appname(APP_NAME)
+            .hint(Hint::DesktopEntry(crate::icons::NAME.into()))
             .summary("Capture failed")
             .body(&message)
             .icon("dialog-error")

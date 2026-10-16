@@ -42,7 +42,7 @@ pub fn set(on: bool) -> io::Result<PathBuf> {
          Name=Gorgon\n\
          Comment=Screenshots, recordings and uploads\n\
          Exec={} daemon\n\
-         Icon=camera-photo\n\
+         Icon=gorgon\n\
          Terminal=false\n\
          NoDisplay=true\n\
          X-GNOME-Autostart-enabled=true\n",
@@ -54,7 +54,7 @@ pub fn set(on: bool) -> io::Result<PathBuf> {
 }
 
 /// Quotes an Exec argument per the desktop entry spec.
-fn quote(arg: &str) -> String {
+pub fn quote(arg: &str) -> String {
     if arg
         .chars()
         .all(|c| c.is_ascii_alphanumeric() || "/._-+".contains(c))

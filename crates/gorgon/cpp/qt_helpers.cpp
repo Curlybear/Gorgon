@@ -2,6 +2,7 @@
 
 #include <QClipboard>
 #include <QGuiApplication>
+#include <QIcon>
 #include <QImage>
 #include <QString>
 
@@ -31,6 +32,15 @@ void set_clipboard_text(rust::Str text) {
 
 void keep_running_without_windows() {
   QGuiApplication::setQuitOnLastWindowClosed(false);
+}
+
+void set_app_identity(rust::Str desktop_file, rust::Str icon_path) {
+  const auto name = QString::fromUtf8(desktop_file.data(), desktop_file.size());
+  QGuiApplication::setDesktopFileName(name);
+  QIcon icon = QIcon::fromTheme(name);
+  if (icon.isNull())
+    icon = QIcon(QString::fromUtf8(icon_path.data(), icon_path.size()));
+  QGuiApplication::setWindowIcon(icon);
 }
 
 }  // namespace gorgon

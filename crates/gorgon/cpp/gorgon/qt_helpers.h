@@ -18,4 +18,7 @@ void set_clipboard_text(rust::Str text);
 // Keeps the app running in the tray after the last overlay closes.
 void keep_running_without_windows();
 
+// Sets the desktop entry name (the Wayland app id) and the window icon.
+void set_app_identity(rust::Str desktop_file, rust::Str icon_path);
+
 }  // namespace gorgon

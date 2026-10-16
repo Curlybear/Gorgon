@@ -43,8 +43,13 @@ impl ksni::Tray for GorgonTray {
         if crate::recorder::is_recording() {
             "media-record".into()
         } else {
-            "camera-photo".into()
+            String::new()
         }
+    }
+
+    fn icon_pixmap(&self) -> Vec<ksni::Icon> {
+        static PIXMAPS: OnceLock<Vec<ksni::Icon>> = OnceLock::new();
+        PIXMAPS.get_or_init(crate::icons::tray_pixmaps).clone()
     }
 
     fn activate(&mut self, _x: i32, _y: i32) {

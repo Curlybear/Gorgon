@@ -8,6 +8,7 @@ mod autostart;
 mod client;
 mod dbus;
 mod editor;
+mod icons;
 mod notify;
 mod outputs;
 mod pipeline;
@@ -184,10 +185,12 @@ fn daemon() -> ExitCode {
         }
     }
 
+    icons::install();
     let mut app = QGuiApplication::new();
     if let Some(app) = app.as_mut() {
         app.set_application_name(&QString::from("Gorgon"));
     }
+    app::set_identity();
     let mut engine = QQmlApplicationEngine::new();
     if let Some(engine) = engine.as_mut() {
         engine.load(&QUrl::from("qrc:/qt/qml/dev/gorgon/qml/main.qml"));
