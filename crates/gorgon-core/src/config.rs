@@ -15,6 +15,8 @@ pub struct Config {
     pub copy_image: bool,
     /// Show a notification after each capture.
     pub notify: bool,
+    /// Open the editor after every capture, not only for "and edit" captures.
+    pub open_editor: bool,
 }
 
 impl Default for Config {
@@ -27,6 +29,7 @@ impl Default for Config {
             filename_pattern: "%Y-%m-%d_%H-%M-%S".into(),
             copy_image: true,
             notify: true,
+            open_editor: false,
         }
     }
 }

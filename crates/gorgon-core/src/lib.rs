@@ -1,6 +1,7 @@
 //! Everything in Gorgon that doesn't need Qt: settings, taking screenshots
 //! through the portal, cropping and saving.
 
+pub mod annotate;
 pub mod capture;
 pub mod config;
 pub mod naming;

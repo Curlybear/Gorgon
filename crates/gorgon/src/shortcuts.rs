@@ -7,26 +7,44 @@ use ashpd::desktop::{
 use futures_util::StreamExt;
 use gorgon_core::CaptureMode;
 
-/// ShareX's defaults.
-const SHORTCUTS: &[(&str, &str, &str, CaptureMode)] = &[
-    (
-        "capture-region",
-        "Capture region",
-        "CTRL+Print",
-        CaptureMode::Region,
-    ),
-    (
-        "capture-screen",
-        "Capture screen",
-        "Print",
-        CaptureMode::Screen,
-    ),
-    (
-        "capture-window",
-        "Capture window",
-        "ALT+Print",
-        CaptureMode::Window,
-    ),
+struct Binding {
+    id: &'static str,
+    description: &'static str,
+    trigger: &'static str,
+    mode: CaptureMode,
+    edit: bool,
+}
+
+/// ShareX's defaults, plus Ctrl+Shift+Print to capture a region and edit it.
+const SHORTCUTS: &[Binding] = &[
+    Binding {
+        id: "capture-region",
+        description: "Capture region",
+        trigger: "CTRL+Print",
+        mode: CaptureMode::Region,
+        edit: false,
+    },
+    Binding {
+        id: "capture-screen",
+        description: "Capture screen",
+        trigger: "Print",
+        mode: CaptureMode::Screen,
+        edit: false,
+    },
+    Binding {
+        id: "capture-window",
+        description: "Capture window",
+        trigger: "ALT+Print",
+        mode: CaptureMode::Window,
+        edit: false,
+    },
+    Binding {
+        id: "capture-region-edit",
+        description: "Capture region and edit",
+        trigger: "CTRL+SHIFT+Print",
+        mode: CaptureMode::Region,
+        edit: true,
+    },
 ];
 
 pub async fn run() {
@@ -45,9 +63,7 @@ async fn register() -> ashpd::Result<()> {
         .await?;
     let wanted: Vec<NewShortcut> = SHORTCUTS
         .iter()
-        .map(|(id, description, trigger, _)| {
-            NewShortcut::new(*id, *description).preferred_trigger(*trigger)
-        })
+        .map(|b| NewShortcut::new(b.id, b.description).preferred_trigger(b.trigger))
         .collect();
     let bound = portal
         .bind_shortcuts(&session, &wanted, None, BindShortcutsOptions::default())
@@ -59,8 +75,8 @@ async fn register() -> ashpd::Result<()> {
 
     let mut activated = portal.receive_activated().await?;
     while let Some(event) = activated.next().await {
-        if let Some((.., mode)) = SHORTCUTS.iter().find(|(id, ..)| *id == event.shortcut_id()) {
-            if let Err(e) = crate::app::request_capture(*mode) {
+        if let Some(b) = SHORTCUTS.iter().find(|b| b.id == event.shortcut_id()) {
+            if let Err(e) = crate::app::request_capture(b.mode, b.edit) {
                 eprintln!("{e}");
             }
         }

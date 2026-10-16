@@ -6,7 +6,11 @@ use ksni::{menu::StandardItem, MenuItem, TrayMethods};
 struct GorgonTray;
 
 fn capture(mode: CaptureMode) {
-    if let Err(e) = crate::app::request_capture(mode) {
+    request(mode, false);
+}
+
+fn request(mode: CaptureMode, edit: bool) {
+    if let Err(e) = crate::app::request_capture(mode, edit) {
         eprintln!("{e}");
     }
 }
@@ -39,6 +43,9 @@ impl ksni::Tray for GorgonTray {
         };
         vec![
             item("Capture region", || capture(CaptureMode::Region)),
+            item("Capture region and edit", || {
+                request(CaptureMode::Region, true)
+            }),
             item("Capture screen", || capture(CaptureMode::Screen)),
             item("Capture window", || capture(CaptureMode::Window)),
             MenuItem::Separator,

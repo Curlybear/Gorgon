@@ -73,7 +73,7 @@ Cargo workspace:
 ## Editor
 
 - Annotations live in a Rust model (a list of shapes with properties), so undo/redo is a simple command stack.
-- Rendering uses `QPainter` (exposed by `cxx-qt-lib`) inside a `QQuickPaintedItem`, and the exact same drawing code renders the final export onto a `QImage`. One renderer means what you see is what gets uploaded.
+- Rendering is pure Rust (tiny-skia for shapes, cosmic-text for text) in `gorgon-core`, so it is unit-tested; the editor shows the same pixels it exports. (cxx-qt-lib's QPainter lacks brushes and painting onto images, which settled it.)
 - Blur and pixelate are applied to the pixels on export, never as an overlay, so the hidden text can't be recovered from the uploaded file.
 - Tools: select/move, rectangle, arrow, line, freehand, text, highlighter, blur, pixelate, crop. Color, thickness and font size in a small toolbar. Keyboard shortcuts per tool, Enter to finish, Esc to cancel.
 - Later, if wanted: numbered step markers, ellipse, shadows.
@@ -130,9 +130,9 @@ Every capture and its result goes into history, failed uploads included, with a 
 - Setting the clipboard from a background app on each DE
 - Window capture: portal interactive vs ScreenCast single frame
 
-**M1: Capture** (in progress, first version on main): daemon, tray, CLI over D-Bus, region / fullscreen / window capture, freeze overlay, save to disk, copy image, notification, hotkeys.
+**M1: Capture** (done): daemon, tray, CLI over D-Bus, region / fullscreen / window capture, freeze overlay, save to disk, copy image, notification, hotkeys.
 
-**M2: Editor**: all v1 tools, undo/redo, export, "capture and edit" path.
+**M2: Editor** (first version on main): all v1 tools, undo/redo, export, "capture and edit" path.
 
 **M3: Upload**: `.sxcu` import and execution, XBackBone + Kutt working end to end, URL copy, history window, settings UI for the pipeline. **This is the MVP: daily-usable.**
 

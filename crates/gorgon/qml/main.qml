@@ -18,6 +18,7 @@ QtObject {
 
     property App app: App {
         onSelectRegion: root.selecting = true
+        onOpenEditor: editorList.append({})
         onFlash: {
             root.flashHandled = false
             root.flashing = true
@@ -34,6 +35,16 @@ QtObject {
             originY: root.minY
             imageScale: root.app.imageWidth / root.desktopWidth
             onDone: root.selecting = false
+        }
+    }
+
+    property ListModel editorList: ListModel {}
+
+    property Instantiator editors: Instantiator {
+        model: root.editorList
+        delegate: EditorWindow {
+            required property int index
+            onClosed: Qt.callLater(() => root.editorList.remove(index))
         }
     }
 

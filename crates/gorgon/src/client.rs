@@ -1,6 +1,7 @@
-//! `gorgon capture ...`: asks the daemon to capture, starting it if needed.
+//! `gorgon capture ...` and `gorgon edit ...`: ask the daemon, starting it if needed.
 
 use std::{
+    path::Path,
     process::{Command, Stdio},
     time::{Duration, Instant},
 };
@@ -11,7 +12,39 @@ use zbus::Connection;
 
 use crate::dbus;
 
-pub async fn capture(mode: CaptureMode) -> Result<()> {
+pub async fn capture(mode: CaptureMode, edit: bool) -> Result<()> {
+    let conn = connect().await?;
+    conn.call_method(
+        Some(dbus::NAME),
+        dbus::PATH,
+        Some(dbus::INTERFACE),
+        "Capture",
+        &(mode.as_str(), edit),
+    )
+    .await
+    .context("the Gorgon daemon refused the capture")?;
+    Ok(())
+}
+
+pub async fn edit(path: &Path) -> Result<()> {
+    let path = std::fs::canonicalize(path)
+        .with_context(|| format!("could not find {}", path.display()))?;
+    let path = path.to_str().context("the path isn't valid UTF-8")?;
+    let conn = connect().await?;
+    conn.call_method(
+        Some(dbus::NAME),
+        dbus::PATH,
+        Some(dbus::INTERFACE),
+        "EditFile",
+        &(path,),
+    )
+    .await
+    .context("the Gorgon daemon couldn't open the file")?;
+    Ok(())
+}
+
+/// Connects to the session bus, starting the daemon if it isn't running.
+async fn connect() -> Result<Connection> {
     let conn = Connection::session()
         .await
         .context("could not reach the session bus")?;
@@ -19,16 +52,7 @@ pub async fn capture(mode: CaptureMode) -> Result<()> {
         start_daemon()?;
         wait_for_daemon(&conn).await?;
     }
-    conn.call_method(
-        Some(dbus::NAME),
-        dbus::PATH,
-        Some(dbus::INTERFACE),
-        "Capture",
-        &(mode.as_str(),),
-    )
-    .await
-    .context("the Gorgon daemon refused the capture")?;
-    Ok(())
+    Ok(conn)
 }
 
 /// Starts `gorgon daemon` in the background, logging to the runtime folder.

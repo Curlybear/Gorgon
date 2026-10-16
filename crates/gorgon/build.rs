@@ -5,10 +5,12 @@ fn main() {
         QmlModule::new("dev.gorgon")
             .qml_file("qml/main.qml")
             .qml_file("qml/RegionOverlay.qml")
-            .qml_file("qml/Flash.qml"),
+            .qml_file("qml/Flash.qml")
+            .qml_file("qml/EditorWindow.qml")
+            .qml_file("qml/ToolButton.qml"),
     )
     .qt_module("Quick")
-    .files(["src/app.rs", "src/selection.rs"])
+    .files(["src/app.rs", "src/editor.rs", "src/selection.rs"])
     .include_dir("cpp")
     .cpp_file("cpp/qt_helpers.cpp")
     .build();

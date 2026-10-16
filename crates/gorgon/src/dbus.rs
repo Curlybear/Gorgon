@@ -11,10 +11,15 @@ struct Service;
 
 #[interface(name = "dev.gorgon.Gorgon1")]
 impl Service {
-    /// Starts a capture: "region", "screen" or "window".
-    fn capture(&self, mode: &str) -> fdo::Result<()> {
+    /// Starts a capture: "region", "screen" or "window", optionally opening the editor.
+    fn capture(&self, mode: &str, edit: bool) -> fdo::Result<()> {
         let mode: CaptureMode = mode.parse().map_err(fdo::Error::InvalidArgs)?;
-        crate::app::request_capture(mode).map_err(fdo::Error::Failed)
+        crate::app::request_capture(mode, edit).map_err(fdo::Error::Failed)
+    }
+
+    /// Opens an image file in the editor.
+    fn edit_file(&self, path: &str) -> fdo::Result<()> {
+        crate::app::request_edit_file(path.into()).map_err(fdo::Error::Failed)
     }
 }
 

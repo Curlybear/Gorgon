@@ -23,12 +23,18 @@ pub fn saved(path: &Path, copied: bool) {
             .image_path(&path.display().to_string())
             .action("default", "Open")
             .action("open", "Open")
+            .action("edit", "Edit")
             .action("folder", "Show in folder")
             .timeout(Timeout::Milliseconds(6000))
             .show();
         match shown {
             Ok(handle) => handle.wait_for_action(|action| match action {
                 "default" | "open" => open(&path),
+                "edit" => {
+                    if let Err(e) = crate::app::request_edit_file(path.clone()) {
+                        error(&e);
+                    }
+                }
                 "folder" => {
                     if let Some(dir) = path.parent() {
                         open(dir);

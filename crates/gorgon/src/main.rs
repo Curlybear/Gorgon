@@ -6,6 +6,7 @@
 mod app;
 mod client;
 mod dbus;
+mod editor;
 mod notify;
 mod selection;
 mod shortcuts;
@@ -32,7 +33,12 @@ enum Command {
     Capture {
         #[arg(value_parser = parse_mode)]
         mode: CaptureMode,
+        /// Open the editor before saving
+        #[arg(long)]
+        edit: bool,
     },
+    /// Open an image in the editor
+    Edit { file: std::path::PathBuf },
 }
 
 fn parse_mode(s: &str) -> Result<CaptureMode, String> {
@@ -53,14 +59,19 @@ pub fn runtime() -> &'static tokio::runtime::Runtime {
 
 fn main() -> ExitCode {
     match Cli::parse().command.unwrap_or(Command::Daemon) {
-        Command::Capture { mode } => match runtime().block_on(client::capture(mode)) {
-            Ok(()) => ExitCode::SUCCESS,
-            Err(e) => {
-                eprintln!("gorgon: {e:#}");
-                ExitCode::FAILURE
-            }
-        },
+        Command::Capture { mode, edit } => report(runtime().block_on(client::capture(mode, edit))),
+        Command::Edit { file } => report(runtime().block_on(client::edit(&file))),
         Command::Daemon => daemon(),
+    }
+}
+
+fn report(result: anyhow::Result<()>) -> ExitCode {
+    match result {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("gorgon: {e:#}");
+            ExitCode::FAILURE
+        }
     }
 }
 
