@@ -760,6 +760,31 @@ mod tests {
     }
 
     #[test]
+    fn xbackbone_raw_link() {
+        // examples/xbackbone.sxcu turns the preview link into the raw file's
+        // link, whether or not the server escapes slashes in its JSON.
+        let up = Uploader::parse(include_str!("../../../examples/xbackbone.sxcu")).unwrap();
+        for body in [
+            r#"{"message":"OK","version":"3.8.1","url":"https:\/\/x.example.eu\/me\/AbC123.gif"}"#,
+            r#"{"message":"OK","version":"3.8.1","url":"https://x.example.eu/me/AbC123.gif"}"#,
+        ] {
+            let ctx = ctx_with_body(body);
+            assert_eq!(
+                up.url.as_ref().unwrap().render(&ctx, Escape::None).unwrap(),
+                "https://x.example.eu/me/AbC123/raw.gif"
+            );
+            assert_eq!(
+                up.deletion_url
+                    .as_ref()
+                    .unwrap()
+                    .render(&ctx, Escape::None)
+                    .unwrap(),
+                "https://x.example.eu/me/AbC123.gif/delete/YOUR_TOKEN"
+            );
+        }
+    }
+
+    #[test]
     fn regex_header_and_response() {
         let ctx = ctx_with_body("done: https://i.example.com/k3y.png ok");
         assert_eq!(
