@@ -34,7 +34,7 @@ On older GNOME and on Sway, bind the commands yourself. On GNOME: Settings, Keyb
 
 ### Editor
 
-Opens after `--edit` captures, from the notification's Edit button, or after every capture with `open_editor = true`. Tools have one-key shortcuts: V select, R rectangle, E ellipse, A arrow, L line, P pen, T text, H highlighter, B blur, X pixelate, C crop. Ctrl+Z / Ctrl+Shift+Z undo and redo, Delete removes the selected shape, Enter copies and saves, Esc discards.
+Opens after `--edit` captures, from the notification's Edit button, or after every capture with `open_editor = true`. Tools have one-key shortcuts: V select, R rectangle, E ellipse, A arrow, L line, P pen, T text, H highlighter, B blur, X pixelate, C crop. Ctrl+Z / Ctrl+Shift+Z undo and redo, Delete removes the selected shape, Enter copies and saves, Esc discards. The bar at the bottom shows the zoom; type a percentage there, or use Ctrl+wheel, Ctrl+plus/minus, Ctrl+0 to fit and Ctrl+1 for actual pixels. Scroll or middle-drag to move around a zoomed-in capture.
 
 Blur and pixelate are baked into the saved pixels, so the original text can't be recovered from the file.
 

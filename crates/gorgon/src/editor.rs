@@ -33,6 +33,11 @@ pub mod qobject {
         #[qproperty(bool, has_selection, cxx_name = "hasSelection")]
         #[qproperty(i32, image_width, cxx_name = "imageWidth")]
         #[qproperty(i32, image_height, cxx_name = "imageHeight")]
+        /// Current zoom in percent of image pixels per screen pixel. Read-only
+        /// from QML; change it with the zoom invokables.
+        #[qproperty(f64, zoom)]
+        /// True while the capture is fitted to the item and follows resizes.
+        #[qproperty(bool, fitted)]
         type EditorCanvas = super::EditorCanvasRust;
 
         /// The text tool was clicked here (item coordinates); QML shows an input.
@@ -67,6 +72,35 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "deleteSelected"]
         fn delete_selected(self: Pin<&mut EditorCanvas>);
+
+        /// Fits the capture to the item again.
+        #[qinvokable]
+        #[cxx_name = "zoomFit"]
+        fn zoom_fit(self: Pin<&mut EditorCanvas>);
+
+        /// Sets the zoom in percent, keeping the item's center in place.
+        #[qinvokable]
+        #[cxx_name = "setZoomPercent"]
+        fn set_zoom_percent(self: Pin<&mut EditorCanvas>, percent: f64);
+
+        /// Multiplies the zoom, keeping the image point under (x, y) in place.
+        #[qinvokable]
+        #[cxx_name = "zoomBy"]
+        fn zoom_by(self: Pin<&mut EditorCanvas>, factor: f64, x: f64, y: f64);
+
+        /// Moves to the next preset zoom step, up or down.
+        #[qinvokable]
+        #[cxx_name = "zoomStep"]
+        fn zoom_step(self: Pin<&mut EditorCanvas>, up: bool);
+
+        /// Scrolls a zoomed-in capture by this many item pixels.
+        #[qinvokable]
+        #[cxx_name = "panBy"]
+        fn pan_by(self: Pin<&mut EditorCanvas>, dx: f64, dy: f64);
+
+        /// Call when the item's size changes: refreshes `zoom` and repaints.
+        #[qinvokable]
+        fn relayout(self: Pin<&mut EditorCanvas>);
 
         /// Flattens the annotations, copies and saves the result.
         #[qinvokable]
@@ -125,6 +159,10 @@ pub struct EditorCanvasRust {
     has_selection: bool,
     image_width: i32,
     image_height: i32,
+    zoom: f64,
+    fitted: bool,
+    /// Logical pixels per image pixel and image top-left, used when not fitted.
+    manual: View,
     session: Option<Session>,
     drag: Drag,
     preview: Option<Shape>,
@@ -145,6 +183,13 @@ impl Default for EditorCanvasRust {
             has_selection: false,
             image_width: 0,
             image_height: 0,
+            zoom: 100.0,
+            fitted: true,
+            manual: View {
+                scale: 1.0,
+                x: 0.0,
+                y: 0.0,
+            },
             session: None,
             drag: Drag::None,
             preview: None,
@@ -157,7 +202,7 @@ impl Default for EditorCanvasRust {
 impl cxx_qt::Initialize for qobject::EditorCanvas {
     fn initialize(mut self: Pin<&mut Self>) {
         self.as_mut()
-            .on_pixel_ratio_changed(|canvas| canvas.update())
+            .on_pixel_ratio_changed(|canvas| canvas.relayout())
             .release();
         self.on_tool_changed(|mut canvas| {
             // Switching tools drops the selection.
@@ -169,8 +214,8 @@ impl cxx_qt::Initialize for qobject::EditorCanvas {
     }
 }
 
-/// Image-space placement of the capture inside the item: fit to the item,
-/// never shown larger than one image pixel per logical pixel.
+/// Placement of the capture inside the item: logical pixels per image pixel,
+/// and where the image's top-left corner sits.
 #[derive(Clone, Copy)]
 struct View {
     scale: f64,
@@ -194,6 +239,25 @@ impl View {
             r.height * self.scale,
         )
     }
+}
+
+/// Zoom limits, in image pixels per screen pixel.
+const MIN_ZOOM: f64 = 0.05;
+const MAX_ZOOM: f64 = 16.0;
+/// Preset steps for the zoom buttons, in percent.
+const ZOOM_STEPS: &[f64] = &[
+    5.0, 10.0, 25.0, 33.0, 50.0, 67.0, 75.0, 100.0, 125.0, 150.0, 200.0, 300.0, 400.0, 800.0,
+    1600.0,
+];
+
+/// The next preset zoom step up or down from `current`, in percent.
+fn next_zoom_step(current: f64, up: bool) -> f64 {
+    let next = if up {
+        ZOOM_STEPS.iter().find(|&&z| z > current + 0.5)
+    } else {
+        ZOOM_STEPS.iter().rev().find(|&&z| z < current - 0.5)
+    };
+    next.copied().unwrap_or(current)
 }
 
 fn tool_kind(tool: &str) -> Option<ShapeKind> {
@@ -226,14 +290,59 @@ impl qobject::EditorCanvas {
             return None;
         }
         let size = self.size();
-        // Fill the item; only small captures in a big window stop growing,
-        // at one image pixel per logical pixel.
-        let scale = (size.width() / w).min(size.height() / h).min(1.0);
+        let (sw, sh) = (size.width(), size.height());
+        if self.fitted {
+            // Fill the item; small captures in a big window stop growing at
+            // one image pixel per logical pixel.
+            let scale = (sw / w).min(sh / h).min(1.0);
+            return Some(View {
+                scale,
+                x: ((sw - w * scale) / 2.0).round(),
+                y: ((sh - h * scale) / 2.0).round(),
+            });
+        }
+        let m = self.manual;
+        // Center along an axis that fits; otherwise keep the edges in view.
+        let place = |pos: f64, img: f64, item: f64| {
+            if img <= item {
+                ((item - img) / 2.0).round()
+            } else {
+                pos.clamp(item - img, 0.0).round()
+            }
+        };
         Some(View {
-            scale,
-            x: ((size.width() - w * scale) / 2.0).round(),
-            y: ((size.height() - h * scale) / 2.0).round(),
+            scale: m.scale,
+            x: place(m.x, w * m.scale, sw),
+            y: place(m.y, h * m.scale, sh),
         })
+    }
+
+    fn dpr(&self) -> f64 {
+        self.pixel_ratio.max(0.1)
+    }
+
+    /// Switches to a manual view at `scale`, keeping the image point under
+    /// item position (x, y) where it is.
+    fn zoom_to(mut self: Pin<&mut Self>, scale: f64, x: f64, y: f64) {
+        let Some(v) = self.view() else { return };
+        let dpr = self.dpr();
+        let scale = scale.clamp(MIN_ZOOM / dpr, MAX_ZOOM / dpr);
+        let p = v.to_image(x, y);
+        let manual = View {
+            scale,
+            x: x - f64::from(p.x) * scale,
+            y: y - f64::from(p.y) * scale,
+        };
+        {
+            let mut rust = self.as_mut().rust_mut();
+            rust.manual = manual;
+        }
+        // Store the clamped placement so later pans start from what is shown.
+        self.as_mut().set_fitted(false);
+        if let Some(v) = self.view() {
+            self.as_mut().rust_mut().manual = v;
+        }
+        self.relayout();
     }
 
     fn new_shape(&self, kind: ShapeKind, at: Point) -> Shape {
@@ -276,8 +385,62 @@ impl qobject::EditorCanvas {
         });
         self.as_mut().set_image_width(w);
         self.as_mut().set_image_height(h);
+        self.as_mut().set_fitted(true);
+        self.as_mut().relayout();
         self.changed();
         true
+    }
+
+    pub fn zoom_fit(mut self: Pin<&mut Self>) {
+        self.as_mut().set_fitted(true);
+        self.relayout();
+    }
+
+    pub fn set_zoom_percent(self: Pin<&mut Self>, percent: f64) {
+        if !percent.is_finite() || percent <= 0.0 {
+            return;
+        }
+        let size = self.size();
+        let scale = percent / 100.0 / self.dpr();
+        self.zoom_to(scale, size.width() / 2.0, size.height() / 2.0);
+    }
+
+    pub fn zoom_by(self: Pin<&mut Self>, factor: f64, x: f64, y: f64) {
+        let Some(v) = self.view() else { return };
+        if !factor.is_finite() || factor <= 0.0 {
+            return;
+        }
+        self.zoom_to(v.scale * factor, x, y);
+    }
+
+    pub fn zoom_step(self: Pin<&mut Self>, up: bool) {
+        let target = next_zoom_step(*self.zoom(), up);
+        self.set_zoom_percent(target);
+    }
+
+    pub fn pan_by(mut self: Pin<&mut Self>, dx: f64, dy: f64) {
+        if self.fitted {
+            // A fitted capture is fully visible; nothing to scroll.
+            return;
+        }
+        let Some(v) = self.view() else { return };
+        self.as_mut().rust_mut().manual = View {
+            scale: v.scale,
+            x: v.x + dx,
+            y: v.y + dy,
+        };
+        if let Some(v) = self.view() {
+            self.as_mut().rust_mut().manual = v;
+        }
+        self.update();
+    }
+
+    pub fn relayout(mut self: Pin<&mut Self>) {
+        if let Some(v) = self.view() {
+            let zoom = v.scale * self.dpr() * 100.0;
+            self.as_mut().set_zoom(zoom);
+        }
+        self.update();
     }
 
     pub fn press(mut self: Pin<&mut Self>, x: f64, y: f64) {
