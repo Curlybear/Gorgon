@@ -169,8 +169,8 @@ impl cxx_qt::Initialize for qobject::EditorCanvas {
     }
 }
 
-/// Image-space placement of the capture inside the item: fit, never shown
-/// larger than one image pixel per device pixel.
+/// Image-space placement of the capture inside the item: fit to the item,
+/// never shown larger than one image pixel per logical pixel.
 #[derive(Clone, Copy)]
 struct View {
     scale: f64,
@@ -226,8 +226,9 @@ impl qobject::EditorCanvas {
             return None;
         }
         let size = self.size();
-        let max_scale = 1.0 / self.pixel_ratio.max(1.0);
-        let scale = (size.width() / w).min(size.height() / h).min(max_scale);
+        // Fill the item; only small captures in a big window stop growing,
+        // at one image pixel per logical pixel.
+        let scale = (size.width() / w).min(size.height() / h).min(1.0);
         Some(View {
             scale,
             x: ((size.width() - w * scale) / 2.0).round(),
