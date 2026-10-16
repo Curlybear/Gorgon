@@ -27,6 +27,7 @@ pub mod qobject {
         #[qproperty(QString, color)]
         #[qproperty(f64, stroke_width, cxx_name = "strokeWidth")]
         #[qproperty(f64, font_size, cxx_name = "fontSize")]
+        #[qproperty(f64, pixel_ratio, cxx_name = "pixelRatio")]
         #[qproperty(bool, can_undo, cxx_name = "canUndo")]
         #[qproperty(bool, can_redo, cxx_name = "canRedo")]
         #[qproperty(bool, has_selection, cxx_name = "hasSelection")]
@@ -117,6 +118,8 @@ pub struct EditorCanvasRust {
     color: QString,
     stroke_width: f64,
     font_size: f64,
+    /// Device pixels per logical pixel, so captures show 1:1 at most.
+    pixel_ratio: f64,
     can_undo: bool,
     can_redo: bool,
     has_selection: bool,
@@ -136,6 +139,7 @@ impl Default for EditorCanvasRust {
             color: QString::from("#e53935"),
             stroke_width: 4.0,
             font_size: 28.0,
+            pixel_ratio: 1.0,
             can_undo: false,
             can_redo: false,
             has_selection: false,
@@ -151,7 +155,10 @@ impl Default for EditorCanvasRust {
 }
 
 impl cxx_qt::Initialize for qobject::EditorCanvas {
-    fn initialize(self: Pin<&mut Self>) {
+    fn initialize(mut self: Pin<&mut Self>) {
+        self.as_mut()
+            .on_pixel_ratio_changed(|canvas| canvas.update())
+            .release();
         self.on_tool_changed(|mut canvas| {
             // Switching tools drops the selection.
             canvas.as_mut().rust_mut().selected = None;
@@ -162,7 +169,8 @@ impl cxx_qt::Initialize for qobject::EditorCanvas {
     }
 }
 
-/// Image-space placement of the capture inside the item: fit, never upscaled.
+/// Image-space placement of the capture inside the item: fit, never shown
+/// larger than one image pixel per device pixel.
 #[derive(Clone, Copy)]
 struct View {
     scale: f64,
@@ -218,7 +226,8 @@ impl qobject::EditorCanvas {
             return None;
         }
         let size = self.size();
-        let scale = (size.width() / w).min(size.height() / h).min(1.0);
+        let max_scale = 1.0 / self.pixel_ratio.max(1.0);
+        let scale = (size.width() / w).min(size.height() / h).min(max_scale);
         Some(View {
             scale,
             x: ((size.width() - w * scale) / 2.0).round(),

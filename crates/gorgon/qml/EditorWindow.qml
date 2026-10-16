@@ -10,14 +10,10 @@ Window {
 
     title: "Gorgon editor"
     color: "#1e1f22"
-    visible: true
-    minimumWidth: 720
-    minimumHeight: 420
-    width: Math.min(Math.max(canvas.imageWidth / Screen.devicePixelRatio + 40, minimumWidth),
-                    Screen.desktopAvailableWidth * 0.9)
-    height: Math.min(Math.max(canvas.imageHeight / Screen.devicePixelRatio + toolbar.height + 40,
-                              minimumHeight),
-                     Screen.desktopAvailableHeight * 0.9)
+    visible: false
+    // Every tool fits on one line.
+    minimumWidth: tools.implicitWidth + actions.implicitWidth + 40
+    minimumHeight: 360
 
     readonly property var tools: [
         { id: "select", label: "Select", key: "V" },
@@ -49,28 +45,41 @@ Window {
     }
 
     onClosing: closed()
-    Component.onCompleted: {
-        if (!canvas.load())
-            close()
+    // Show the capture at its real size, or maximize when it doesn't fit.
+    function showSized() {
+        const margin = 2 * canvas.anchors.margins
+        const wantW = canvas.imageWidth / Screen.devicePixelRatio + margin
+        const wantH = canvas.imageHeight / Screen.devicePixelRatio + toolbar.height + margin
+        if (wantW > Screen.desktopAvailableWidth * 0.95 || wantH > Screen.desktopAvailableHeight * 0.95) {
+            showMaximized()
+        } else {
+            width = Math.max(wantW, minimumWidth)
+            height = Math.max(wantH, minimumHeight)
+            show()
+        }
         requestActivate()
+    }
+
+    Component.onCompleted: {
+        if (canvas.load())
+            showSized()
+        else
+            close()
     }
 
     Rectangle {
         id: toolbar
         anchors.left: parent.left
         anchors.right: parent.right
-        height: Math.max(48, tools.height + 16)
+        height: 48
         color: "#2b2d31"
         z: 2
 
-        // Wraps onto a second line when the window is narrow.
-        Flow {
+        Row {
             id: tools
             anchors.verticalCenter: parent.verticalCenter
             anchors.left: parent.left
             anchors.leftMargin: 8
-            anchors.right: actions.left
-            anchors.rightMargin: 12
             spacing: 2
 
             Repeater {
@@ -169,6 +178,7 @@ Window {
 
     EditorCanvas {
         id: canvas
+        pixelRatio: Screen.devicePixelRatio
         anchors.top: toolbar.bottom
         anchors.left: parent.left
         anchors.right: parent.right
