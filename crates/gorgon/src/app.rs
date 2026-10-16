@@ -13,6 +13,7 @@ pub mod qobject {
     unsafe extern "C++" {
         include!("gorgon/qt_helpers.h");
         fn set_clipboard_image(rgba: &[u8], width: i32, height: i32) -> bool;
+        fn set_clipboard_text(text: &str);
         fn keep_running_without_windows();
     }
 
@@ -37,6 +38,22 @@ pub mod qobject {
         #[qsignal]
         #[cxx_name = "openEditor"]
         fn open_editor(self: Pin<&mut App>);
+
+        /// Text is waiting to be copied: QML shows a tiny window to get the
+        /// focus the clipboard needs, then calls `copyPending`.
+        #[qsignal]
+        #[cxx_name = "copyRequested"]
+        fn copy_requested(self: Pin<&mut App>);
+
+        /// Copies the waiting text. Call while a Gorgon window has focus.
+        #[qinvokable]
+        #[cxx_name = "copyPending"]
+        fn copy_pending(self: Pin<&mut App>);
+
+        /// No window got focus in time; the text wasn't copied.
+        #[qinvokable]
+        #[cxx_name = "copyFailed"]
+        fn copy_failed(self: Pin<&mut App>);
 
         /// Starts a capture: "region", "screen" or "window".
         #[qinvokable]
@@ -65,7 +82,8 @@ use std::{
     collections::VecDeque,
     path::{Path, PathBuf},
     pin::Pin,
-    sync::{Mutex, OnceLock},
+    sync::{mpsc, Mutex, OnceLock},
+    time::Duration,
 };
 
 use cxx_qt::{CxxQtThread, CxxQtType, Threading};
@@ -117,7 +135,36 @@ pub fn copy_to_clipboard(image: &RgbaImage) -> bool {
     qobject::set_clipboard_image(image.as_raw(), image.width() as i32, image.height() as i32)
 }
 
-/// Saves the final image and tells the user, off the UI thread.
+/// Text waiting for a focused window to be copied, and who wants to know.
+static PENDING_COPY: Mutex<Option<(String, mpsc::Sender<bool>)>> = Mutex::new(None);
+
+/// Copies text from any thread, briefly showing a window to get focus.
+/// Blocks until it's done or has failed.
+pub fn copy_text(text: &str) -> bool {
+    let (tx, rx) = mpsc::channel();
+    if let Ok(mut pending) = PENDING_COPY.lock() {
+        if let Some((_, old)) = pending.replace((text.to_owned(), tx)) {
+            let _ = old.send(false);
+        }
+    }
+    if queue_on_ui(|app| app.copy_requested()).is_err() {
+        return false;
+    }
+    rx.recv_timeout(Duration::from_secs(3)).unwrap_or(false)
+}
+
+fn finish_copy(copy: bool) {
+    let Some((text, tx)) = PENDING_COPY.lock().ok().and_then(|mut p| p.take()) else {
+        return;
+    };
+    if copy {
+        qobject::set_clipboard_text(&text);
+    }
+    let _ = tx.send(copy);
+}
+
+/// Saves the final image, uploads it if set up, and tells the user. Runs
+/// off the UI thread.
 pub fn deliver(image: RgbaImage, config: Config, copied: bool) {
     std::thread::spawn(move || {
         let path = naming::unique_path(
@@ -126,16 +173,38 @@ pub fn deliver(image: RgbaImage, config: Config, copied: bool) {
             "png",
             naming::now(),
         );
-        match output::save_png(&image, &path) {
-            Ok(()) => {
-                println!("saved {}", path.display());
-                if config.notify {
-                    notify::saved(&path, copied);
-                }
-            }
-            Err(e) => notify::error(&format!("could not save to {}: {e}", path.display())),
+        if let Err(e) = output::save_png(&image, &path) {
+            notify::error(&format!("could not save to {}: {e}", path.display()));
+            return;
         }
+        println!("saved {}", path.display());
+        upload_saved(path, config, copied);
     });
+}
+
+/// Uploads a saved capture per the settings and notifies. Blocks.
+pub fn upload_saved(path: PathBuf, config: Config, copied_image: bool) {
+    match crate::pipeline::upload(&path, &config) {
+        None => {
+            if config.notify {
+                notify::saved(&path, copied_image);
+            }
+        }
+        Some(Ok(links)) => {
+            println!("uploaded {}", links.url);
+            if let Some(e) = &links.shorten_error {
+                eprintln!("shortening failed: {e}");
+            }
+            let copied = config.copy_url && copy_text(&links.url);
+            if config.copy_url && !copied {
+                eprintln!("could not copy the link: no Gorgon window got focus");
+            }
+            if config.notify {
+                notify::uploaded(&path, &links, copied);
+            }
+        }
+        Some(Err(e)) => notify::upload_failed(&path, &e),
+    }
 }
 
 /// Removes a file, ignoring "already gone".
@@ -231,6 +300,14 @@ impl qobject::App {
             CaptureMode::Region => self.select_region(),
             CaptureMode::Screen | CaptureMode::Window => self.flash(),
         }
+    }
+
+    pub fn copy_pending(self: Pin<&mut Self>) {
+        finish_copy(true);
+    }
+
+    pub fn copy_failed(self: Pin<&mut Self>) {
+        finish_copy(false);
     }
 
     pub fn finish_region(self: Pin<&mut Self>, x: f64, y: f64, width: f64, height: f64) {

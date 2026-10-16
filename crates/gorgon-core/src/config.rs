@@ -17,6 +17,16 @@ pub struct Config {
     pub notify: bool,
     /// Open the editor after every capture, not only for "and edit" captures.
     pub open_editor: bool,
+    /// Upload captures with `image_uploader`.
+    pub upload: bool,
+    /// Name of the imported `.sxcu` uploader for captures. None: don't upload.
+    pub image_uploader: Option<String>,
+    /// Shorten uploaded links with `url_shortener`.
+    pub shorten: bool,
+    /// Name of the imported `.sxcu` URL shortener. None: keep the long link.
+    pub url_shortener: Option<String>,
+    /// Copy the final link to the clipboard (it replaces the copied image).
+    pub copy_url: bool,
 }
 
 impl Default for Config {
@@ -30,6 +40,11 @@ impl Default for Config {
             copy_image: true,
             notify: true,
             open_editor: false,
+            upload: true,
+            image_uploader: None,
+            shorten: true,
+            url_shortener: None,
+            copy_url: true,
         }
     }
 }
@@ -76,6 +91,51 @@ impl Config {
     }
 }
 
+/// Sets one key in the settings file, keeping the rest of it (comments
+/// included) as written. Creates the file if needed.
+pub fn set_value(key: &str, value: impl Into<toml_edit::Value>) -> Result<PathBuf, ConfigError> {
+    let path = Config::path().ok_or_else(|| ConfigError::Read {
+        path: PathBuf::from("~/.config/gorgon/config.toml"),
+        source: std::io::Error::other("no config folder"),
+    })?;
+    set_value_in(&path, key, value)?;
+    Ok(path)
+}
+
+pub fn set_value_in(
+    path: &Path,
+    key: &str,
+    value: impl Into<toml_edit::Value>,
+) -> Result<(), ConfigError> {
+    let text = match std::fs::read_to_string(path) {
+        Ok(t) => t,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(source) => {
+            return Err(ConfigError::Read {
+                path: path.to_owned(),
+                source,
+            })
+        }
+    };
+    let mut doc: toml_edit::DocumentMut =
+        text.parse()
+            .map_err(|e: toml_edit::TomlError| ConfigError::Read {
+                path: path.to_owned(),
+                source: std::io::Error::other(e.to_string()),
+            })?;
+    doc[key] = toml_edit::value(value);
+    let write = || {
+        if let Some(dir) = path.parent() {
+            std::fs::create_dir_all(dir)?;
+        }
+        std::fs::write(path, doc.to_string())
+    };
+    write().map_err(|source| ConfigError::Read {
+        path: path.to_owned(),
+        source,
+    })
+}
+
 /// Expands a leading `~/` so settings can be written the way people type paths.
 fn expand_home(path: &Path) -> PathBuf {
     match (path.strip_prefix("~"), dirs::home_dir()) {
@@ -105,6 +165,18 @@ mod tests {
         std::fs::write(&path, "save_dir = \"~/Shots\"\n").unwrap();
         let config = Config::load_from(&path).unwrap();
         assert_eq!(config.save_dir, dirs::home_dir().unwrap().join("Shots"));
+    }
+
+    #[test]
+    fn set_value_keeps_comments() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        std::fs::write(&path, "# mine\nnotify = false\n").unwrap();
+        set_value_in(&path, "image_uploader", "XBackBone").unwrap();
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(text.starts_with("# mine\nnotify = false\n"));
+        let config = Config::load_from(&path).unwrap();
+        assert_eq!(config.image_uploader.as_deref(), Some("XBackBone"));
     }
 
     #[test]

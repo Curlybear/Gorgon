@@ -9,9 +9,11 @@ mod dbus;
 mod editor;
 mod notify;
 mod outputs;
+mod pipeline;
 mod selection;
 mod shortcuts;
 mod tray;
+mod uploader_cli;
 
 use std::{process::ExitCode, sync::OnceLock};
 
@@ -40,6 +42,38 @@ enum Command {
     },
     /// Open an image in the editor
     Edit { file: std::path::PathBuf },
+    /// Upload a file and print its link (shortened if a shortener is set)
+    Upload {
+        file: std::path::PathBuf,
+        /// Uploader to use instead of the default
+        #[arg(long)]
+        with: Option<String>,
+        /// Keep the uploader's own link
+        #[arg(long)]
+        no_shorten: bool,
+    },
+    /// Shorten a URL and print the short link
+    Shorten {
+        url: String,
+        /// Shortener to use instead of the default
+        #[arg(long)]
+        with: Option<String>,
+    },
+    /// Manage custom uploaders and URL shorteners (ShareX .sxcu files)
+    Uploader {
+        #[command(subcommand)]
+        command: UploaderCommand,
+    },
+}
+
+#[derive(Subcommand)]
+enum UploaderCommand {
+    /// Import a .sxcu file; the first of each kind becomes the default
+    Import { file: std::path::PathBuf },
+    /// List imported uploaders and which are the defaults
+    List,
+    /// Make an imported uploader the default for its kind
+    Default { name: String },
 }
 
 fn parse_mode(s: &str) -> Result<CaptureMode, String> {
@@ -63,6 +97,17 @@ fn main() -> ExitCode {
         Command::Capture { mode, edit } => report(runtime().block_on(client::capture(mode, edit))),
         Command::Edit { file } => report(runtime().block_on(client::edit(&file))),
         Command::Daemon => daemon(),
+        Command::Upload {
+            file,
+            with,
+            no_shorten,
+        } => report(uploader_cli::upload(&file, with.as_deref(), no_shorten)),
+        Command::Shorten { url, with } => report(uploader_cli::shorten(&url, with.as_deref())),
+        Command::Uploader { command } => report(match command {
+            UploaderCommand::Import { file } => uploader_cli::import(&file),
+            UploaderCommand::List => uploader_cli::list(),
+            UploaderCommand::Default { name } => uploader_cli::set_default(&name),
+        }),
     }
 }
 

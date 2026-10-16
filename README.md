@@ -48,7 +48,46 @@ filename_pattern = "%Y-%m-%d_%H-%M-%S"   # strftime
 copy_image = true
 notify = true
 open_editor = false                      # edit every capture
+upload = true                            # when image_uploader is set
+image_uploader = "XBackBone"             # set by `gorgon uploader import`
+shorten = true                           # when url_shortener is set
+url_shortener = "Kutt"
+copy_url = true                          # the link replaces the copied image
 ```
+
+### Uploading and short links
+
+Gorgon uploads through ShareX custom uploader files (`.sxcu`), so any server
+that ShareX can upload to works. Import one per destination:
+
+```sh
+gorgon uploader import ~/Downloads/xbackbone.sxcu   # from XBackBone's ShareX config download
+gorgon uploader import kutt.sxcu                    # see examples/kutt.sxcu
+gorgon uploader list
+```
+
+The first uploader and the first URL shortener you import become the
+defaults; `gorgon uploader default <name>` switches. Imported files live in
+`~/.config/gorgon/uploaders/`, readable only by you, since they hold your
+tokens. After each capture Gorgon saves it, uploads it, shortens the link,
+copies the link and shows it in a notification (with Open link and Copy link
+buttons). `examples/` has templates for XBackBone and Kutt.
+
+From the command line:
+
+```sh
+gorgon upload shot.png          # prints the (short) link
+gorgon upload shot.png --no-shorten --with XBackBone
+gorgon shorten https://example.com/long/link
+```
+
+Supported `.sxcu` features: all request methods, `Parameters`, `Headers`,
+`MultipartFormData` / `FormURLEncoded` / `JSON` / `XML` / `Binary` bodies,
+`URL`, `ThumbnailURL`, `DeletionURL`, `ErrorMessage`, and `{json:...}`,
+`{regex:...|group}`, `{header:...}`, `{response}`, `{responseurl}`,
+`{filename}`, `{input}`, `{random:a|b}`, `{base64:...}`. Older files using
+`$json:url$` and `RegexList` work too. Files that need `{xml:...}` or
+interactive prompts are refused on import, with the reason.
 
 ### Logs
 

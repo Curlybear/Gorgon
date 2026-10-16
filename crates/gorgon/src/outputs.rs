@@ -38,10 +38,11 @@ pub fn scales() -> HashMap<String, f64> {
 /// The scale of the output called `name`, or of the only output.
 pub fn scale_of(name: &str) -> Option<f64> {
     let scales = scales();
-    scales
-        .get(name)
-        .copied()
-        .or_else(|| (scales.len() == 1).then(|| scales.values().next().copied()).flatten())
+    scales.get(name).copied().or_else(|| {
+        (scales.len() == 1)
+            .then(|| scales.values().next().copied())
+            .flatten()
+    })
 }
 
 fn query() -> Option<HashMap<String, f64>> {
@@ -58,9 +59,7 @@ fn query() -> Option<HashMap<String, f64>> {
         .enumerate()
         .map(|(i, g)| {
             state.outputs.push(Output::default());
-            globals
-                .registry()
-                .bind(g.name, g.version.min(4), &qh, i)
+            globals.registry().bind(g.name, g.version.min(4), &qh, i)
         })
         .collect();
     for (i, o) in wl_outputs.iter().enumerate() {

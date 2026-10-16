@@ -1,11 +1,14 @@
 //! Everything in Gorgon that doesn't need Qt: settings, taking screenshots
-//! through the portal, cropping and saving.
+//! through the portal, cropping and saving, uploading.
 
 pub mod annotate;
 pub mod capture;
 pub mod config;
 pub mod naming;
 pub mod output;
+pub mod sxcu;
+pub mod upload;
+pub mod uploaders;
 
 /// What the user asked to capture.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

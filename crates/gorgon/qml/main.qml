@@ -8,6 +8,7 @@ QtObject {
     property bool selecting: false
     property bool flashing: false
     property bool flashHandled: false
+    property bool grabbing: false
 
     // Logical bounds of the whole desktop, to map screens onto the screenshot.
     readonly property var screens: Array.from(Qt.application.screens)
@@ -19,6 +20,7 @@ QtObject {
     property App app: App {
         onSelectRegion: root.selecting = true
         onOpenEditor: editorList.append({})
+        onCopyRequested: root.grabbing = true
         onFlash: {
             root.flashHandled = false
             root.flashing = true
@@ -45,6 +47,14 @@ QtObject {
         delegate: EditorWindow {
             required property int index
             onClosed: Qt.callLater(() => root.editorList.remove(index))
+        }
+    }
+
+    property Instantiator clipboardGrab: Instantiator {
+        model: root.grabbing ? 1 : 0
+        delegate: ClipboardGrab {
+            app: root.app
+            onDone: root.grabbing = false
         }
     }
 

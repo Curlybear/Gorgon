@@ -12,6 +12,9 @@ namespace gorgon {
 bool set_clipboard_image(rust::Slice<const std::uint8_t> rgba, std::int32_t width,
                          std::int32_t height);
 
+// Puts text on the clipboard; same focus rule as images.
+void set_clipboard_text(rust::Str text);
+
 // Keeps the app running in the tray after the last overlay closes.
 void keep_running_without_windows();
 

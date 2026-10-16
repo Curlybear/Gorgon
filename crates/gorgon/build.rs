@@ -7,7 +7,8 @@ fn main() {
             .qml_file("qml/RegionOverlay.qml")
             .qml_file("qml/Flash.qml")
             .qml_file("qml/EditorWindow.qml")
-            .qml_file("qml/ToolButton.qml"),
+            .qml_file("qml/ToolButton.qml")
+            .qml_file("qml/ClipboardGrab.qml"),
     )
     .qt_module("Quick")
     .files(["src/app.rs", "src/editor.rs", "src/selection.rs"])

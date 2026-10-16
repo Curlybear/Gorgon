@@ -3,6 +3,7 @@
 #include <QClipboard>
 #include <QGuiApplication>
 #include <QImage>
+#include <QString>
 
 namespace gorgon {
 
@@ -20,6 +21,12 @@ bool set_clipboard_image(rust::Slice<const std::uint8_t> rgba, std::int32_t widt
   // copy(): the clipboard must own its pixels, the Rust buffer goes away.
   clipboard->setImage(view.copy());
   return true;
+}
+
+void set_clipboard_text(rust::Str text) {
+  if (QClipboard* clipboard = QGuiApplication::clipboard()) {
+    clipboard->setText(QString::fromUtf8(text.data(), static_cast<qsizetype>(text.size())));
+  }
 }
 
 void keep_running_without_windows() {

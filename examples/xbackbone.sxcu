@@ -1,0 +1,18 @@
+{
+  "Version": "16.0.0",
+  "Name": "XBackBone",
+  "DestinationType": "ImageUploader, TextUploader, FileUploader",
+  "RequestMethod": "POST",
+  "RequestURL": "https://xbackbone.example.com/upload",
+  "Body": "MultipartFormData",
+  "FileFormName": "upload",
+  "Arguments": {
+    "file": "{filename}",
+    "text": "{input}",
+    "token": "YOUR_TOKEN"
+  },
+  "URL": "{json:url}",
+  "ThumbnailURL": "{json:url}/raw",
+  "DeletionURL": "{json:url}/delete/YOUR_TOKEN",
+  "ErrorMessage": "{json:message}"
+}
