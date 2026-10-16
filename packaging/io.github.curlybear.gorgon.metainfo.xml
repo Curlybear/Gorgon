@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.curlybear.gorgon</id>
+  <name>Gorgon</name>
+  <summary>Screenshots, recordings and uploads for Wayland</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <developer id="io.github.curlybear">
+    <name>Curlybear</name>
+  </developer>
+  <description>
+    <p>
+      A screenshot and upload tool in the spirit of ShareX. Capture a region,
+      window or screen, annotate it, record a region to MP4 or GIF, upload it
+      to your own server through a ShareX .sxcu uploader, shorten the link and
+      get the URL on your clipboard.
+    </p>
+  </description>
+  <launchable type="desktop-id">gorgon.desktop</launchable>
+  <url type="homepage">https://github.com/Curlybear/Gorgon</url>
+  <url type="bugtracker">https://github.com/Curlybear/Gorgon/issues</url>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-10-17"/>
+  </releases>
+</component>

@@ -41,8 +41,13 @@ fn write_if_changed(path: &Path, bytes: &[u8]) -> std::io::Result<bool> {
 
 /// Installs the icons and `~/.local/share/applications/gorgon.desktop`.
 /// The launcher entry opens History and names the windows' app id, so
-/// docks show the icon too.
+/// docks show the icon too. Packages (installed under /usr) ship both
+/// themselves, so this only runs for `cargo install` and AppImages.
 pub fn install() {
+    let Ok(exe) = crate::self_exe() else { return };
+    if exe.starts_with("/usr/") {
+        return;
+    }
     let Some(data) = data_dir() else { return };
     let hicolor = data.join("icons/hicolor");
     let mut changed = false;
@@ -59,9 +64,6 @@ pub fn install() {
             .and_then(|f| f.set_modified(std::time::SystemTime::now()));
     }
 
-    let Ok(exe) = std::env::current_exe() else {
-        return;
-    };
     let Some(exe) = exe.to_str() else { return };
     let entry = format!(
         "[Desktop Entry]\n\

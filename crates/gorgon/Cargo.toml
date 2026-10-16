@@ -28,3 +28,35 @@ zbus = "5.19.0"
 
 [build-dependencies]
 cxx-qt-build = "0.10.0"
+
+# `cargo deb -p gorgon` builds the .deb (packaging/README.md).
+[package.metadata.deb]
+name = "gorgon"
+maintainer = "Curlybear <4342163+Curlybear@users.noreply.github.com>"
+copyright = "Gorgon contributors"
+license-file = ["../../LICENSE", "0"]
+section = "graphics"
+priority = "optional"
+extended-description = """\
+A screenshot and upload tool for Wayland, in the spirit of ShareX. Capture a \
+region, window or screen, annotate it, record a region to MP4 or GIF, upload \
+it through a ShareX .sxcu uploader, shorten the link and copy the URL."""
+depends = "$auto, qt6-wayland, qml6-module-qtquick, qml6-module-qtquick-window, qml6-module-qtqml-workerscript, xdg-desktop-portal"
+recommends = "gstreamer1.0-tools, gstreamer1.0-pipewire, gstreamer1.0-plugins-good, gstreamer1.0-plugins-ugly"
+assets = [
+    ["target/release/gorgon", "usr/bin/", "755"],
+    ["../../packaging/gorgon.desktop", "usr/share/applications/", "644"],
+    ["../../packaging/io.github.curlybear.gorgon.metainfo.xml", "usr/share/metainfo/", "644"],
+    ["../../assets/icons/gorgon-16.png", "usr/share/icons/hicolor/16x16/apps/gorgon.png", "644"],
+    ["../../assets/icons/gorgon-22.png", "usr/share/icons/hicolor/22x22/apps/gorgon.png", "644"],
+    ["../../assets/icons/gorgon-24.png", "usr/share/icons/hicolor/24x24/apps/gorgon.png", "644"],
+    ["../../assets/icons/gorgon-32.png", "usr/share/icons/hicolor/32x32/apps/gorgon.png", "644"],
+    ["../../assets/icons/gorgon-48.png", "usr/share/icons/hicolor/48x48/apps/gorgon.png", "644"],
+    ["../../assets/icons/gorgon-64.png", "usr/share/icons/hicolor/64x64/apps/gorgon.png", "644"],
+    ["../../assets/icons/gorgon-128.png", "usr/share/icons/hicolor/128x128/apps/gorgon.png", "644"],
+    ["../../assets/icons/gorgon-256.png", "usr/share/icons/hicolor/256x256/apps/gorgon.png", "644"],
+    ["../../assets/icons/gorgon-512.png", "usr/share/icons/hicolor/512x512/apps/gorgon.png", "644"],
+    ["../../examples/*.sxcu", "usr/share/doc/gorgon/examples/", "644"],
+    ["../../tools/xbackbone-raw-links", "usr/share/doc/gorgon/examples/", "755"],
+    ["../../README.md", "usr/share/doc/gorgon/", "644"],
+]

@@ -26,16 +26,16 @@ M1 to M4 are done and verified on GNOME 50. This is everything between here and 
 
 ## Code that should change for packaging
 
-- [ ] Stop self-installing the icon and launcher entry when a package already provides them. Today Gorgon writes into `~/.local/share` at every start. A package ships them in `/usr/share`, or the Flatpak export does.
-- [ ] Ship the launcher entry, icons and an AppStream metainfo file (`<app id>.metainfo.xml`) in the repo. Flathub and the software centers require the metainfo file.
-- [ ] Pick a reverse-DNS app id (AppStream wants one even without Flatpak), for example `io.github.curlybear.Gorgon`. The D-Bus name, the desktop file and the shortcut ids follow from it, so changing the app id resets people's approved shortcuts once.
+- [x] Stop self-installing the icon and launcher entry when a package already provides them. Today Gorgon writes into `~/.local/share` at every start. A package ships them in `/usr/share`, or the Flatpak export does.
+- [x] Ship the launcher entry, icons and an AppStream metainfo file (`<app id>.metainfo.xml`) in the repo. Flathub and the software centers require the metainfo file.
+- [x] Pick a reverse-DNS app id: `io.github.curlybear.gorgon` for AppStream; the desktop file stays `gorgon.desktop` so approved shortcuts survive. ~~Pick a reverse-DNS app id (AppStream wants one even without Flatpak), for example `io.github.curlybear.Gorgon`. The D-Bus name, the desktop file and the shortcut ids follow from it, so changing the app id resets people's approved shortcuts once.~~
 - [ ] Add `gorgon uninstall-user-files`, or document how to remove the autostart entry, launcher, icons, config, history and screencast token.
 - [ ] Make `tools/xbackbone-raw-links` unnecessary by letting Settings edit an uploader's URL template, or by offering "raw link" as an XBackBone option on import.
 
 ## CI and releases
 
-- [ ] A GitHub Actions workflow on every push: `cargo fmt --check`, `cargo clippy`, `cargo test` (the core tests need GStreamer for the recording tests), and a release build.
-- [ ] Tag-triggered releases that build the chosen package(s) and attach them to a GitHub release.
+- [x] A GitHub Actions workflow on every push: `cargo fmt --check`, `cargo clippy`, `cargo test` (the core tests need GStreamer for the recording tests), and a release build.
+- [x] Tag-triggered releases that build the chosen package(s) and attach them to a GitHub release.
 - [ ] A CHANGELOG.md, starting with 0.1.0.
 - [ ] Run a dependency license check (`cargo deny check licenses`) to confirm nothing besides gifski needs a note.
 

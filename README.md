@@ -12,7 +12,9 @@ Capture a region, window or screen, annotate it, upload it to your own server th
 
 Gorgon is at milestone 4: capture a region, a screen or a window, annotate it in the editor, record a region to MP4 or GIF, upload it to your server and copy the link.
 
-Install the build dependencies listed in [docs/spikes.md](docs/spikes.md#build), then:
+Download the `.deb` (Debian 13, Ubuntu 24.04 or newer) or the AppImage from the [releases page](https://github.com/Curlybear/Gorgon/releases). For recording, also install GStreamer (see [Recording](#recording)); the AppImage doesn't bundle it.
+
+To build from source instead, install the build dependencies listed in [docs/spikes.md](docs/spikes.md#build), then:
 
 ```sh
 cargo install --path crates/gorgon

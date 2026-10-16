@@ -1,0 +1,49 @@
+name: Release
+
+# Push a tag like v0.1.0 to build the .deb and AppImage and publish them
+# as a GitHub release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential qt6-base-dev qt6-declarative-dev qt6-wayland \
+            qml6-module-qtquick qml6-module-qtquick-window qml6-module-qtqml-workerscript \
+            file desktop-file-utils libfuse2t64
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Check the tag matches the version
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' crates/gorgon/Cargo.toml | head -n1)
+          test "v$version" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME but Cargo.toml says $version"; exit 1; }
+      - run: cargo build --release -p gorgon
+      - name: Build the .deb
+        run: |
+          cargo install cargo-deb --locked
+          cargo deb -p gorgon --no-build
+      - name: Build the AppImage
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          for tool in linuxdeploy linuxdeploy-plugin-qt; do
+            curl -sSLo "$RUNNER_TEMP/bin/$tool" \
+              "https://github.com/linuxdeploy/$tool/releases/download/continuous/$tool-x86_64.AppImage"
+            chmod +x "$RUNNER_TEMP/bin/$tool"
+          done
+          PATH="$RUNNER_TEMP/bin:$PATH" packaging/build-appimage.sh
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --title "Gorgon ${GITHUB_REF_NAME#v}" --generate-notes \
+            target/debian/*.deb target/appimage/*.AppImage

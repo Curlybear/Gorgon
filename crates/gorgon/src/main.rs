@@ -119,6 +119,16 @@ fn autostart_cli(what: &str) -> anyhow::Result<()> {
     }
 }
 
+/// The command that starts Gorgon again: the AppImage file when running
+/// from one (its contents live in a mount that goes away with it), else
+/// this binary.
+pub fn self_exe() -> std::io::Result<std::path::PathBuf> {
+    match std::env::var_os("APPIMAGE") {
+        Some(appimage) if !appimage.is_empty() => Ok(appimage.into()),
+        _ => std::env::current_exe(),
+    }
+}
+
 fn parse_mode(s: &str) -> Result<CaptureMode, String> {
     s.parse()
 }

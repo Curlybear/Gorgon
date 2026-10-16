@@ -32,7 +32,7 @@ pub fn set(on: bool) -> io::Result<PathBuf> {
             _ => return Ok(path),
         }
     }
-    let exe = std::env::current_exe()?;
+    let exe = crate::self_exe()?;
     let exe = exe
         .to_str()
         .ok_or_else(|| io::Error::other("Gorgon's path isn't UTF-8"))?;

@@ -85,7 +85,7 @@ async fn connect() -> Result<Connection> {
 
 /// Starts `gorgon daemon` in the background, logging to the runtime folder.
 fn start_daemon() -> Result<()> {
-    let exe = std::env::current_exe().context("could not find the gorgon executable")?;
+    let exe = crate::self_exe().context("could not find the gorgon executable")?;
     let log_path = runtime_dir()?.join("daemon.log");
     let log = std::fs::OpenOptions::new()
         .create(true)

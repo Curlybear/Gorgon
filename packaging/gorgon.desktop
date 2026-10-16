@@ -1,0 +1,20 @@
+[Desktop Entry]
+Type=Application
+Name=Gorgon
+GenericName=Screenshot tool
+Comment=Screenshots, recordings and uploads
+Exec=gorgon history
+Icon=gorgon
+Terminal=false
+Categories=Utility;Graphics;
+Keywords=screenshot;capture;record;upload;
+StartupWMClass=gorgon
+Actions=capture-region;settings;
+
+[Desktop Action capture-region]
+Name=Capture region
+Exec=gorgon capture region
+
+[Desktop Action settings]
+Name=Settings
+Exec=gorgon settings
