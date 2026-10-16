@@ -245,7 +245,8 @@ Window {
             Label {
                 width: parent.width
                 text: "Ctrl+Print captures a region, Print the screen, Alt+Print a window, "
-                      + "Ctrl+Shift+Print a region and opens the editor. Your desktop asks to confirm "
+                      + "Ctrl+Shift+Print a region and opens the editor. "
+                      + "Ctrl+Alt+Print records a region to MP4, Ctrl+Alt+Shift+Print to GIF; press it again to stop. Your desktop asks to confirm "
                       + "them the first time and lets you change them in its keyboard settings. "
                       + "Without global shortcuts, bind \"gorgon capture region\" (or screen, window) yourself."
             }

@@ -30,7 +30,7 @@ The first command starts Gorgon in the tray; later ones reuse it. You can also s
 
 ### Keyboard shortcuts
 
-On KDE, Hyprland and GNOME 48 or newer, Gorgon registers Ctrl+Print (region), Print (screen), Alt+Print (window) and Ctrl+Shift+Print (region, then edit), Shift+Print (record a region to MP4) and Alt+Shift+Print (record a region to GIF) itself; press a record shortcut again to stop; your desktop asks you to confirm them.
+On KDE, Hyprland and GNOME 48 or newer, Gorgon registers Ctrl+Print (region), Print (screen), Alt+Print (window) and Ctrl+Shift+Print (region, then edit), Ctrl+Alt+Print (record a region to MP4) and Ctrl+Alt+Shift+Print (record a region to GIF) itself; press a record shortcut again to stop; your desktop asks you to confirm them.
 
 On older GNOME and on Sway, bind the commands yourself. On GNOME: Settings, Keyboard, View and Customize Shortcuts, Custom Shortcuts, then add one per mode with the full path as the command, for example `/home/you/.cargo/bin/gorgon capture region`. GNOME's own screenshot tool owns Print by default, so free that key first under Screenshots if you want it.
 
@@ -42,7 +42,7 @@ Blur and pixelate are baked into the saved pixels, so the original text can't be
 
 ### Recording
 
-Shift+Print, Alt+Shift+Print, the tray menu or `gorgon record mp4|gif` freeze the screen so you can drag the area to record. The first time, your desktop asks which screen to share; Gorgon remembers the answer. While recording, the tray icon turns red and a notification offers Stop. The file lands in `save_dir` and goes through the same upload and history as captures.
+Ctrl+Alt+Print, Ctrl+Alt+Shift+Print, the tray menu or `gorgon record mp4|gif` freeze the screen so you can drag the area to record. The first time, your desktop asks which screen to share; Gorgon remembers the answer. While recording, the tray icon turns red and a notification offers Stop. The file lands in `save_dir` and goes through the same upload and history as captures.
 
 Recording needs GStreamer at runtime:
 

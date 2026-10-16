@@ -22,7 +22,9 @@ enum Action {
 }
 
 /// ShareX's defaults, plus Ctrl+Shift+Print to capture a region and edit it,
-/// and Shift+Print / Alt+Shift+Print to record.
+/// and Ctrl+Alt+Print / Ctrl+Alt+Shift+Print to record. GNOME takes Shift+Print
+/// for its own screenshot and wins most presses, so recording avoids it. The ids
+/// changed with the keys because desktops keep the key stored for an id.
 const SHORTCUTS: &[Binding] = &[
     Binding {
         id: "capture-region",
@@ -49,15 +51,15 @@ const SHORTCUTS: &[Binding] = &[
         action: Action::Capture(CaptureMode::Region, true),
     },
     Binding {
-        id: "record-video",
+        id: "record-mp4",
         description: "Record region as video (again to stop)",
-        trigger: "SHIFT+Print",
+        trigger: "CTRL+ALT+Print",
         action: Action::Record(Format::Mp4),
     },
     Binding {
-        id: "record-gif",
+        id: "record-gif-region",
         description: "Record region as GIF (again to stop)",
-        trigger: "ALT+SHIFT+Print",
+        trigger: "CTRL+ALT+SHIFT+Print",
         action: Action::Record(Format::Gif),
     },
 ];
