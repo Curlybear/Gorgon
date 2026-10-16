@@ -214,7 +214,8 @@ Window {
 
             anchors.fill: parent
             acceptedButtons: Qt.LeftButton | Qt.MiddleButton
-            cursorShape: panning ? Qt.ClosedHandCursor
+            cursorShape: panning || (canvas.tool === "select" && pressed && !canvas.hasSelection
+                                     && !canvas.fitted) ? Qt.ClosedHandCursor
                        : spaceHeld ? Qt.OpenHandCursor
                        : canvas.tool === "select" ? Qt.ArrowCursor
                        : canvas.tool === "text" ? Qt.IBeamCursor : Qt.CrossCursor
@@ -307,7 +308,7 @@ Window {
             anchors.left: parent.left
             anchors.leftMargin: 12
             text: canvas.imageWidth + " × " + canvas.imageHeight
-                  + (canvas.fitted ? "" : "   ·   scroll or Space+drag to move around")
+                  + (canvas.fitted ? "" : "   ·   scroll, or drag with Select (V), to move around")
             color: "#a0a4ab"
             font.pixelSize: 13
         }

@@ -150,6 +150,8 @@ enum Drag {
     Move(Point),
     /// Dragging out a crop from this corner.
     Crop(Point),
+    /// Scrolling the view; the last pointer position in item pixels.
+    Pan(f64, f64),
 }
 
 pub struct EditorCanvasRust {
@@ -485,6 +487,9 @@ impl qobject::EditorCanvas {
                         s.doc.checkpoint();
                     }
                     rust.drag = Drag::Move(p);
+                } else {
+                    // Dragging empty space scrolls a zoomed-in capture.
+                    rust.drag = Drag::Pan(x, y);
                 }
             }
             "crop" => self.as_mut().rust_mut().drag = Drag::Crop(p),
@@ -505,6 +510,11 @@ impl qobject::EditorCanvas {
     }
 
     pub fn move_to(mut self: Pin<&mut Self>, x: f64, y: f64) {
+        if let Drag::Pan(lx, ly) = self.drag {
+            self.as_mut().rust_mut().drag = Drag::Pan(x, y);
+            self.pan_by(x - lx, y - ly);
+            return;
+        }
         let Some(view) = self.view() else { return };
         let p = view.to_image(x, y);
         let mut rust = self.as_mut().rust_mut();
@@ -530,6 +540,7 @@ impl qobject::EditorCanvas {
                 rust.drag = Drag::Move(p);
             }
             Drag::Crop(start) => rust.crop_preview = Some(normalized(start, p)),
+            Drag::Pan(..) => unreachable!("handled above"),
         }
         self.update();
     }
@@ -557,7 +568,7 @@ impl qobject::EditorCanvas {
                     }
                 }
             }
-            Drag::Move(_) | Drag::None => {}
+            Drag::Move(_) | Drag::Pan(..) | Drag::None => {}
         }
         self.changed();
     }
