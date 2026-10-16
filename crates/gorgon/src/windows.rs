@@ -50,6 +50,7 @@ pub mod qobject {
         #[qproperty(bool, upload)]
         #[qproperty(bool, shorten)]
         #[qproperty(bool, copy_url, cxx_name = "copyUrl")]
+        #[qproperty(bool, autostart)]
         /// Empty for none.
         #[qproperty(QString, image_uploader, cxx_name = "imageUploader")]
         #[qproperty(QString, url_shortener, cxx_name = "urlShortener")]
@@ -211,6 +212,7 @@ pub struct SettingsRust {
     upload: bool,
     shorten: bool,
     copy_url: bool,
+    autostart: bool,
     image_uploader: QString,
     url_shortener: QString,
     uploaders: QString,
@@ -274,6 +276,7 @@ impl qobject::SettingsModel {
         self.as_mut().set_upload(config.upload);
         self.as_mut().set_shorten(config.shorten);
         self.as_mut().set_copy_url(config.copy_url);
+        self.as_mut().set_autostart(crate::autostart::enabled());
         self.as_mut().set_image_uploader(QString::from(
             config.image_uploader.as_deref().unwrap_or(""),
         ));
@@ -309,6 +312,12 @@ impl qobject::SettingsModel {
             ("image_uploader".to_owned(), text(&self.image_uploader)),
             ("url_shortener".to_owned(), text(&self.url_shortener)),
         ];
+        if self.autostart != crate::autostart::enabled() {
+            if let Err(e) = crate::autostart::set(self.autostart) {
+                self.tell(&format!("Couldn't change starting at login: {e}"), true);
+                return false;
+            }
+        }
         match config::set_values(values) {
             Ok(path) => {
                 self.tell(&format!("Saved to {}", tilde(&path)), false);

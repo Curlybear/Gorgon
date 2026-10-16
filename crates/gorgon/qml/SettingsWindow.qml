@@ -53,6 +53,15 @@ Window {
             width: scroll.width - 48
             spacing: 10
 
+            Heading { text: "General" }
+
+            Check {
+                label: "Start Gorgon when I log in"
+                detail: "Keeps it in the tray so shortcuts work right away"
+                checked: settings.autostart
+                onToggled: c => settings.autostart = c
+            }
+
             Heading { text: "Captures" }
 
             Label { text: "Save captures in" }

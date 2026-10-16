@@ -26,7 +26,7 @@ gorgon record mp4              # or gif; drag a region, then...
 gorgon record stop             # ...stop (or run the same record command again)
 ```
 
-The first command starts Gorgon in the tray; later ones reuse it. You can also start it yourself with plain `gorgon`.
+The first command starts Gorgon in the tray; later ones reuse it. You can also start it yourself with plain `gorgon`. To have it start when you log in, tick "Start Gorgon when I log in" in Settings or run `gorgon autostart on` (`off` to undo); it adds `~/.config/autostart/gorgon.desktop`, which GNOME, KDE and most desktops run at login. On Hyprland or Sway, add `exec-once = gorgon` / `exec gorgon` to your compositor config instead.
 
 ### Keyboard shortcuts
 

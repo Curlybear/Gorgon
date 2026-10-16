@@ -4,6 +4,7 @@
 //! asks it to capture, starting it first if needed.
 
 mod app;
+mod autostart;
 mod client;
 mod dbus;
 mod editor;
@@ -53,6 +54,11 @@ enum Command {
     History,
     /// Open the settings window
     Settings,
+    /// Start Gorgon when you log in: on, off, or status
+    Autostart {
+        #[arg(value_parser = ["on", "off", "status"], default_value = "status")]
+        what: String,
+    },
     /// Upload a file and print its link (shortened if a shortener is set)
     Upload {
         file: std::path::PathBuf,
@@ -87,6 +93,31 @@ enum UploaderCommand {
     Default { name: String },
 }
 
+fn autostart_cli(what: &str) -> anyhow::Result<()> {
+    match what {
+        "status" => {
+            println!(
+                "Gorgon {} start at login.",
+                if autostart::enabled() {
+                    "does"
+                } else {
+                    "doesn't"
+                }
+            );
+            Ok(())
+        }
+        on => {
+            let path = autostart::set(on == "on")?;
+            if on == "on" {
+                println!("Gorgon will start at login ({}).", path.display());
+            } else {
+                println!("Gorgon won't start at login any more.");
+            }
+            Ok(())
+        }
+    }
+}
+
 fn parse_mode(s: &str) -> Result<CaptureMode, String> {
     s.parse()
 }
@@ -111,6 +142,7 @@ fn main() -> ExitCode {
         Command::Record { what } => report(runtime().block_on(client::record(&what))),
         Command::History => report(runtime().block_on(client::show_window("history"))),
         Command::Settings => report(runtime().block_on(client::show_window("settings"))),
+        Command::Autostart { what } => report(autostart_cli(&what)),
         Command::Upload {
             file,
             with,
