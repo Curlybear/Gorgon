@@ -30,6 +30,20 @@ gorgon record stop             # ...stop (or run the same record command again)
 
 The first command starts Gorgon in the tray; later ones reuse it. Once it has run, Gorgon also appears in your app grid (it opens History, with Capture region and Settings on right-click). You can also start it yourself with plain `gorgon`. To have it start when you log in, tick "Start Gorgon when I log in" in Settings or run `gorgon autostart on` (`off` to undo); it adds `~/.config/autostart/gorgon.desktop`, which GNOME, KDE and most desktops run at login. On Hyprland or Sway, add `exec-once = gorgon` / `exec gorgon` to your compositor config instead.
 
+### Supported desktops
+
+Gorgon talks to the desktop through xdg-desktop-portal, so it should work anywhere the portals do. So far:
+
+| Desktop | Status | Notes |
+|---|---|---|
+| GNOME 50 (Ubuntu 26.04) | Tested | Tray needs the AppIndicator extension |
+| GNOME 46–49 | To be tested | Global shortcuts need GNOME 48 or newer |
+| KDE Plasma 6 | To be tested | |
+| Hyprland | To be tested | |
+| Sway and other wlroots compositors | To be tested | No global shortcuts portal: bind the `gorgon` commands in your config |
+
+Tried it somewhere else? Open an issue with what worked and what didn't.
+
 ### Keyboard shortcuts
 
 On KDE, Hyprland and GNOME 48 or newer, Gorgon registers Ctrl+Print (region), Print (screen), Alt+Print (window) and Ctrl+Shift+Print (region, then edit), Ctrl+Alt+Print (record a region to MP4) and Ctrl+Alt+Shift+Print (record a region to GIF) itself; press a record shortcut again to stop; your desktop asks you to confirm them.

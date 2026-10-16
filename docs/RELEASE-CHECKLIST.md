@@ -2,36 +2,21 @@
 
 M1 to M4 are done and verified on GNOME 50. This is everything between here and a public first release (M5).
 
-## Questions to decide first
+## Decisions (Curly, 2026-10-16)
 
-Each one changes what the checklist below needs. My recommendation is marked.
-
-1. **Packaging: what ships first?**
-   - Flatpak on Flathub (**recommended**): one build for every distro, the portals Gorgon depends on are native there, and GStreamer and Qt come with the runtime.
-   - AUR package: cheap to add next to the Flatpak, and Arch users expect one.
-   - AppImage: works, but bundling Qt 6 and GStreamer makes it large and fiddly.
-   - `.deb`/PPA: only helps Ubuntu and Debian.
-2. **gifski's AGPL-3.0 license: keep it or swap it?** Keeping it is legal, but anyone redistributing Gorgon binaries takes on AGPL terms for gifski. The alternative is the MIT `gif` crate, which gives worse GIFs.
-   - Keep gifski (**recommended**).
-   - Switch to an MIT encoder.
-3. **Which desktops do we claim?** So far it has only been tested on GNOME 50.
-   - "Tested on GNOME and KDE, others best effort" (**recommended**, after one KDE pass).
-   - Test Hyprland and Sway too before release.
-4. **Commit authorship.** Every commit is authored by "Claude &lt;noreply@anthropic.com&gt;". The repo will look like a bot wrote it.
-   - Keep the history as it is (**recommended**, honest and zero risk).
-   - Rewrite authorship to you before going public. This needs a force push to main, and it can only be done before anyone has cloned the repo.
-5. **The icon.** It was generated with Gemini.
-   - Fine to publish as is (**recommended**, but check you're happy with Google's terms for generated images).
-   - Commission or draw a simplified version. At tray size (22 px) the detail turns into a blob.
-6. **First version number.**
-   - 0.1.0 (**recommended**).
-   - 1.0.0.
+1. **Packaging:** AppImage and `.deb`, both built by CI and attached to GitHub releases.
+2. **GIF encoder:** keep gifski (AGPL-3.0, noted in the README).
+3. **Desktops:** a README table, "tested" for GNOME and "to be tested" for the rest, updated as each gets tested.
+4. **Commit authorship:** commits are co-authored by Curly and Claude from now on (`Co-authored-by` trailers). Rewriting the existing history to match needs a force push and is a separate yes/no.
+5. **Icon:** ship it as is.
+6. **First version:** 0.1.0.
 
 ## Before the repo goes public
 
 - [ ] Rewrite the README opening. It still says "early planning and prototyping".
 - [ ] Add a screenshot of the editor and a short GIF of a recording to the README. Gorgon can make both.
-- [ ] Add a "Supported desktops" table and a troubleshooting section to the README: the AppIndicator extension on GNOME, shortcut conflicts, and missing GStreamer plugins.
+- [x] Add a "Supported desktops" table.
+- [ ] Add a troubleshooting section to the README: the AppIndicator extension on GNOME, shortcut conflicts, and missing GStreamer plugins.
 - [ ] Check that nothing private is in the git history. A scan of the current tree found no tokens or personal server URLs. The test files only hold placeholders like `YOUR_TOKEN`.
 - [ ] Decide what stays in the repo:
   - `spikes/` and `docs/spikes.md` could move to a branch, or be kept as history.
@@ -43,7 +28,7 @@ Each one changes what the checklist below needs. My recommendation is marked.
 
 - [ ] Stop self-installing the icon and launcher entry when a package already provides them. Today Gorgon writes into `~/.local/share` at every start. A package ships them in `/usr/share`, or the Flatpak export does.
 - [ ] Ship the launcher entry, icons and an AppStream metainfo file (`<app id>.metainfo.xml`) in the repo. Flathub and the software centers require the metainfo file.
-- [ ] Pick a reverse-DNS app id for Flatpak, for example `io.github.curlybear.Gorgon`. The D-Bus name, the desktop file and the shortcut ids follow from it, so changing the app id resets people's approved shortcuts once.
+- [ ] Pick a reverse-DNS app id (AppStream wants one even without Flatpak), for example `io.github.curlybear.Gorgon`. The D-Bus name, the desktop file and the shortcut ids follow from it, so changing the app id resets people's approved shortcuts once.
 - [ ] Add `gorgon uninstall-user-files`, or document how to remove the autostart entry, launcher, icons, config, history and screencast token.
 - [ ] Make `tools/xbackbone-raw-links` unnecessary by letting Settings edit an uploader's URL template, or by offering "raw link" as an XBackBone option on import.
 
