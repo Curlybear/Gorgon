@@ -1,0 +1,31 @@
+name: Bug report
+description: Something doesn't work
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Gorgon version
+      description: Output of `gorgon --version`, and how you installed it (.deb, AppImage, cargo install).
+    validations:
+      required: true
+  - type: input
+    id: desktop
+    attributes:
+      label: Desktop and distribution
+      description: For example GNOME 50 on Ubuntu 26.04, KDE Plasma 6.4 on Arch.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: The end of `$XDG_RUNTIME_DIR/gorgon/daemon.log`, or the output of `gorgon daemon` run in a terminal. Remove any tokens.
+      render: text

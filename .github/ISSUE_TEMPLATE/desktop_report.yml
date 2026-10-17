@@ -1,0 +1,28 @@
+name: Desktop report
+description: Tell us how Gorgon works on a desktop marked "to be tested"
+labels: [desktop-support]
+body:
+  - type: input
+    id: desktop
+    attributes:
+      label: Desktop, version and distribution
+    validations:
+      required: true
+  - type: checkboxes
+    id: works
+    attributes:
+      label: What works
+      options:
+        - label: Region capture
+        - label: Window capture
+        - label: Screen capture
+        - label: Global shortcuts
+        - label: Tray icon
+        - label: Copying the image and link
+        - label: MP4 recording
+        - label: GIF recording
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Anything that didn't work, prompts that appeared, and logs.

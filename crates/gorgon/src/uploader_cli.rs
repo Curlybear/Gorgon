@@ -125,6 +125,15 @@ pub fn list() -> Result<()> {
     Ok(())
 }
 
+pub fn raw_links(name: &str) -> Result<()> {
+    let path = uploaders::make_raw_links(name).map_err(anyhow::Error::msg)?;
+    println!(
+        "{name:?} now links straight to the file ({}).",
+        path.display()
+    );
+    Ok(())
+}
+
 pub fn set_default(name: &str) -> Result<()> {
     let uploader = uploaders::find(name)?;
     if uploader.uploads_files() {

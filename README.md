@@ -4,23 +4,37 @@
 
 A screenshot and upload tool for Linux on Wayland, in the spirit of ShareX.
 
-Capture a region, window or screen, annotate it, upload it to your own server through a ShareX `.sxcu` uploader, shorten the link, and get the URL on your clipboard.
+Capture a region, window or screen, annotate it, record a region to MP4 or GIF, upload it to your own server through a ShareX `.sxcu` uploader, shorten the link, and get the URL on your clipboard.
 
-**Status:** early planning and prototyping. See [docs/PLAN.md](docs/PLAN.md) for the plan and [docs/spikes.md](docs/spikes.md) for the M0 test programs.
+<p align="center"><img src="assets/screenshots/editor.png" alt="The Gorgon editor with a rectangle, an arrow, a highlight and pixelated text" width="800"></p>
 
-## Try it
+- **Captures:** region (on a frozen screen), window or whole screen, from global shortcuts, the tray or the `gorgon` command.
+- **Editor:** rectangle, ellipse, arrow, line, pen, text, highlighter, blur, pixelate and crop, with undo and zoom.
+- **Recording:** a region to MP4 or GIF, stopped with the same shortcut.
+- **Uploads:** any server ShareX can upload to, through `.sxcu` files (XBackBone, for example), plus short links through a shortener such as Kutt.
+- **History:** every capture with its file and links, with retry for failed uploads.
 
-Gorgon is at milestone 4: capture a region, a screen or a window, annotate it in the editor, record a region to MP4 or GIF, upload it to your server and copy the link.
+## Install
 
-Download the `.deb` (Debian 13, Ubuntu 24.04 or newer) or the AppImage from the [releases page](https://github.com/Curlybear/Gorgon/releases). For recording, also install GStreamer (see [Recording](#recording)); the AppImage doesn't bundle it.
+Download the `.deb` (Debian 13, Ubuntu 24.04 or newer) or the AppImage from the [releases page](https://github.com/Curlybear/Gorgon/releases):
 
-To build from source instead, install the build dependencies listed in [docs/spikes.md](docs/spikes.md#build), then:
+```sh
+sudo apt install ./gorgon_0.1.0-1_amd64.deb
+# or
+chmod +x Gorgon-0.1.0-x86_64.AppImage && ./Gorgon-0.1.0-x86_64.AppImage
+```
+
+For recording, also install GStreamer (see [Recording](#recording)); the AppImage doesn't bundle it.
+
+To build from source instead, install the build dependencies listed in [CONTRIBUTING.md](CONTRIBUTING.md#build), then:
 
 ```sh
 cargo install --path crates/gorgon
 ```
 
-This puts `gorgon` in `~/.cargo/bin`. Then:
+This puts `gorgon` in `~/.cargo/bin`.
+
+## Usage
 
 ```sh
 gorgon capture region          # or screen, window
@@ -28,9 +42,11 @@ gorgon capture region --edit   # open the editor before saving
 gorgon edit picture.png        # annotate an existing image
 gorgon record mp4              # or gif; drag a region, then...
 gorgon record stop             # ...stop (or run the same record command again)
+gorgon history                 # past captures and their links
+gorgon settings
 ```
 
-The first command starts Gorgon in the tray; later ones reuse it. Once it has run, Gorgon also appears in your app grid (it opens History, with Capture region and Settings on right-click). You can also start it yourself with plain `gorgon`. To have it start when you log in, tick "Start Gorgon when I log in" in Settings or run `gorgon autostart on` (`off` to undo); it adds `~/.config/autostart/gorgon.desktop`, which GNOME, KDE and most desktops run at login. On Hyprland or Sway, add `exec-once = gorgon` / `exec gorgon` to your compositor config instead.
+The first command starts Gorgon in the tray; later ones reuse it. Gorgon also appears in your app grid (it opens History, with Capture region and Settings on right-click). You can also start it yourself with plain `gorgon`. To have it start when you log in, tick "Start Gorgon when I log in" in Settings or run `gorgon autostart on` (`off` to undo); it adds `~/.config/autostart/gorgon.desktop`, which GNOME, KDE and most desktops run at login. On Hyprland or Sway, add `exec-once = gorgon` / `exec gorgon` to your compositor config instead.
 
 ### Supported desktops
 
@@ -130,13 +146,43 @@ Supported `.sxcu` features: all request methods, `Parameters`, `Headers`,
 `URL`, `ThumbnailURL`, `DeletionURL`, `ErrorMessage`, and `{json:...}`,
 `{regex:...|group}`, `{header:...}`, `{response}`, `{responseurl}`,
 `{filename}`, `{input}`, `{random:a|b}`, `{base64:...}`. Older files using
-`$json:url$` and `RegexList` work too. Files that need `{xml:...}` or
+`$json:url$` and `RegexList` work too.
+
+XBackBone's own file links to its preview page. For links straight to the
+file (`.../CODE/raw.png`), run `gorgon uploader raw-links <name>` once after
+importing it. Files that need `{xml:...}` or
 interactive prompts are refused on import, with the reason.
 
-### Logs
+## Troubleshooting
 
-When the CLI starts Gorgon, its output goes to `$XDG_RUNTIME_DIR/gorgon/daemon.log`.
+**No tray icon on GNOME.** GNOME has no tray of its own. Install and enable the AppIndicator extension (`gnome-shell-extension-appindicator` on Ubuntu and Debian). Shortcuts and the `gorgon` command work without it.
+
+**A shortcut takes a GNOME screenshot instead.** GNOME's own screenshot tool owns Print, Shift+Print and Alt+Print. Free the key under Settings, Keyboard, View and Customize Shortcuts, Screenshots.
+
+**Shortcuts never got registered.** Your desktop needs the Global Shortcuts portal (GNOME 48 or newer, KDE, Hyprland). Elsewhere, bind `gorgon capture region` and friends in your desktop or compositor settings.
+
+**Recording says GStreamer or a plugin is missing.** Install the packages listed under [Recording](#recording). The error names the missing piece.
+
+**The copied image or link isn't on the clipboard.** On GNOME, a background app can only set the clipboard briefly while one of its windows has focus. If a copy fails, the notification's Copy link button tries again.
+
+**Where are the logs?** When the CLI starts Gorgon, its output goes to `$XDG_RUNTIME_DIR/gorgon/daemon.log` (usually `/run/user/1000/gorgon/daemon.log`).
+
+## Uninstall
+
+Remove the package (`sudo apt remove gorgon`), the AppImage file, or `cargo uninstall gorgon`. Gorgon's own files are:
+
+```sh
+gorgon autostart off                       # ~/.config/autostart/gorgon.desktop
+rm -r ~/.config/gorgon                     # settings and uploaders (with your tokens)
+rm -r ~/.local/share/gorgon                # history
+rm -r ~/.local/state/gorgon                # remembered screen-sharing choice
+rm ~/.local/share/applications/gorgon.desktop ~/.local/share/icons/hicolor/*/apps/gorgon.png   # AppImage and cargo installs only
+```
+
+Your captures stay in `~/Pictures/Gorgon` (or your `save_dir`).
 
 ## License
+
+Contributions: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 GPL-3.0-or-later. See [LICENSE](LICENSE). Builds link gifski, which is AGPL-3.0-or-later; GPLv3 section 13 allows that combination, and the AGPL terms then apply to gifski within the binary.

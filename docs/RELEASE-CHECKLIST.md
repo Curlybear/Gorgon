@@ -13,39 +13,37 @@ M1 to M4 are done and verified on GNOME 50. This is everything between here and 
 
 ## Before the repo goes public
 
-- [ ] Rewrite the README opening. It still says "early planning and prototyping".
-- [ ] Add a screenshot of the editor and a short GIF of a recording to the README. Gorgon can make both.
+- [x] Rewrite the README opening. It still says "early planning and prototyping".
+- [x] Add a screenshot of the editor to the README (no demo GIF, Curly's call).
 - [x] Add a "Supported desktops" table.
-- [ ] Add a troubleshooting section to the README: the AppIndicator extension on GNOME, shortcut conflicts, and missing GStreamer plugins.
-- [ ] Check that nothing private is in the git history. A scan of the current tree found no tokens or personal server URLs. The test files only hold placeholders like `YOUR_TOKEN`.
-- [ ] Decide what stays in the repo:
+- [x] Add a troubleshooting section to the README: the AppIndicator extension on GNOME, shortcut conflicts, and missing GStreamer plugins.
+- [x] Check that nothing private is in the git history: a scan of every commit found no tokens, personal server URLs or email addresses.
+- [x] Decide what stays in the repo: both stay, described in CONTRIBUTING.md.
   - `spikes/` and `docs/spikes.md` could move to a branch, or be kept as history.
   - `tools/fake-portal` is a test tool, so keep it under `tools/` and document it.
-- [ ] Add a CONTRIBUTING.md (how to build, run the tests, and do the headless test setup) and issue templates for bugs, with the desktop, versions and logs.
-- [ ] Add `repository`, `homepage` and `keywords` to the crates' Cargo.toml files.
+- [x] Add a CONTRIBUTING.md (how to build, run the tests, and do the headless test setup) and issue templates for bugs, with the desktop, versions and logs.
+- [x] Add `repository`, `homepage` and `keywords` to the crates' Cargo.toml files.
 
 ## Code that should change for packaging
 
 - [x] Stop self-installing the icon and launcher entry when a package already provides them. Today Gorgon writes into `~/.local/share` at every start. A package ships them in `/usr/share`, or the Flatpak export does.
 - [x] Ship the launcher entry, icons and an AppStream metainfo file (`<app id>.metainfo.xml`) in the repo. Flathub and the software centers require the metainfo file.
 - [x] Pick a reverse-DNS app id: `io.github.curlybear.gorgon` for AppStream; the desktop file stays `gorgon.desktop` so approved shortcuts survive. ~~Pick a reverse-DNS app id (AppStream wants one even without Flatpak), for example `io.github.curlybear.Gorgon`. The D-Bus name, the desktop file and the shortcut ids follow from it, so changing the app id resets people's approved shortcuts once.~~
-- [ ] Add `gorgon uninstall-user-files`, or document how to remove the autostart entry, launcher, icons, config, history and screencast token.
-- [ ] Make `tools/xbackbone-raw-links` unnecessary by letting Settings edit an uploader's URL template, or by offering "raw link" as an XBackBone option on import.
+- [x] Document (README, Uninstall) how to remove the autostart entry, launcher, icons, config, history and screencast token.
+- [x] Replace `tools/xbackbone-raw-links` with `gorgon uploader raw-links <name>`.
 
 ## CI and releases
 
 - [x] A GitHub Actions workflow on every push: `cargo fmt --check`, `cargo clippy`, `cargo test` (the core tests need GStreamer for the recording tests), and a release build.
 - [x] Tag-triggered releases that build the chosen package(s) and attach them to a GitHub release.
-- [ ] A CHANGELOG.md, starting with 0.1.0.
-- [ ] Run a dependency license check (`cargo deny check licenses`) to confirm nothing besides gifski needs a note.
+- [x] A CHANGELOG.md, starting with 0.1.0.
+- [x] Run a dependency license check: `cargo deny check licenses` passes (deny.toml), gifski is the only copyleft dependency, and CI runs the check.
 
 ## Testing before release
 
-- [ ] KDE Plasma 6: region, screen, window, shortcuts, tray, clipboard, recording.
-- [ ] Two monitors at different scales on GNOME and on KDE. Neither has been tried yet.
-- [ ] Hyprland and Sway, if we claim them: shortcuts come from the CLI there, and recording's region offset needs checking.
-- [ ] A fresh-user run: no config, no uploaders, first-run portal prompts. Does everything explain itself?
-- [ ] A packaged build, not `cargo install`, on a clean machine or VM.
+- [x] A fresh-user run (no config, no uploaders): the capture saves, History shows it as not uploaded, and `gorgon upload` says how to import an uploader.
+- [x] The packaged builds: the .deb installed and ran, and the AppImage started its daemon and windows.
+- Other desktops stay "to be tested" in the README table until someone tries them.
 
 ## Nice to have, not blocking
 

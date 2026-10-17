@@ -3,6 +3,9 @@ name = "gorgon"
 version = "0.1.0"
 edition = "2021"
 license = "GPL-3.0-or-later"
+repository = "https://github.com/Curlybear/Gorgon"
+homepage = "https://github.com/Curlybear/Gorgon"
+keywords = ["screenshot", "wayland", "sharex", "screen-recording", "upload"]
 publish = false
 description = "Screenshot and upload tool for Wayland"
 
@@ -57,6 +60,5 @@ assets = [
     ["../../assets/icons/gorgon-256.png", "usr/share/icons/hicolor/256x256/apps/gorgon.png", "644"],
     ["../../assets/icons/gorgon-512.png", "usr/share/icons/hicolor/512x512/apps/gorgon.png", "644"],
     ["../../examples/*.sxcu", "usr/share/doc/gorgon/examples/", "644"],
-    ["../../tools/xbackbone-raw-links", "usr/share/doc/gorgon/examples/", "755"],
     ["../../README.md", "usr/share/doc/gorgon/", "644"],
 ]

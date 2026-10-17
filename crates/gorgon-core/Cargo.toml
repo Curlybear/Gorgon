@@ -3,6 +3,9 @@ name = "gorgon-core"
 version = "0.1.0"
 edition = "2021"
 license = "GPL-3.0-or-later"
+repository = "https://github.com/Curlybear/Gorgon"
+homepage = "https://github.com/Curlybear/Gorgon"
+keywords = ["screenshot", "wayland", "sharex", "screen-recording", "upload"]
 publish = false
 description = "Gorgon logic that doesn't need Qt: config, capture, saving"
 

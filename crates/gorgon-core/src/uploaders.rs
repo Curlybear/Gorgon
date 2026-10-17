@@ -171,8 +171,100 @@ pub fn remove(name: &str) -> Result<(), StoreError> {
     fs::remove_file(&path).map_err(|e| StoreError::Write { path, source: e })
 }
 
+/// The `URL` template of examples/xbackbone.sxcu, which turns XBackBone's
+/// preview link (host/user/CODE.ext) into the raw file's (host/user/CODE/raw.ext).
+fn xbackbone_raw_url() -> String {
+    let example: serde_json::Value =
+        serde_json::from_str(include_str!("../../../examples/xbackbone.sxcu"))
+            .expect("examples/xbackbone.sxcu is valid JSON");
+    example["URL"].as_str().unwrap_or_default().to_owned()
+}
+
+/// Rewrites an XBackBone `.sxcu` so it links to raw files. Files in the
+/// legacy `$json:url$` syntax are moved to the current `{json:url}` one,
+/// since the new template uses it.
+pub fn with_raw_links(text: &str) -> Result<String, String> {
+    let mut value: serde_json::Value =
+        serde_json::from_str(text.trim_start_matches('\u{feff}')).map_err(|e| e.to_string())?;
+    let url = value
+        .get("URL")
+        .and_then(|u| u.as_str())
+        .unwrap_or_default();
+    if url == xbackbone_raw_url() {
+        return Err("it already links straight to the file".into());
+    }
+    if url != "{json:url}" && url != "$json:url$" {
+        return Err("its URL isn't XBackBone's plain {json:url}, so edit it by hand".into());
+    }
+    let major = value
+        .get("Version")
+        .and_then(|v| v.as_str())
+        .and_then(|v| v.split('.').next()?.parse::<u32>().ok())
+        .unwrap_or(0);
+    if major < 13 {
+        let legacy = regex::Regex::new(r"\$(\w+(?::[^$]*)?)\$").unwrap();
+        fn modernize(v: &mut serde_json::Value, re: &regex::Regex) {
+            match v {
+                serde_json::Value::String(s) => *s = re.replace_all(s, "{$1}").into_owned(),
+                serde_json::Value::Object(map) => map.values_mut().for_each(|v| modernize(v, re)),
+                _ => {}
+            }
+        }
+        modernize(&mut value, &legacy);
+        value["Version"] = "16.0.0".into();
+    }
+    value["URL"] = xbackbone_raw_url().into();
+    let out = serde_json::to_string_pretty(&value).map_err(|e| e.to_string())? + "\n";
+    Uploader::parse(&out).map_err(|e| e.to_string())?;
+    Ok(out)
+}
+
+/// Applies [`with_raw_links`] to a stored uploader.
+pub fn make_raw_links(name: &str) -> Result<PathBuf, String> {
+    let dir = dir().map_err(|e| e.to_string())?;
+    let uploader = find_in(&dir, name).map_err(|e| e.to_string())?;
+    let path = dir.join(format!("{}.sxcu", file_stem(&uploader.name)));
+    let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let out = with_raw_links(&text).map_err(|e| format!("{:?}: {e}", uploader.name))?;
+    let tmp = path.with_extension("sxcu.tmp");
+    fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(&tmp)
+        .and_then(|mut f| f.write_all(out.as_bytes()))
+        .and_then(|_| fs::rename(&tmp, &path))
+        .map_err(|e| format!("{}: {e}", path.display()))?;
+    Ok(path)
+}
+
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn raw_links_from_legacy_xbackbone_export() {
+        let legacy = r#"{"Name":"my-server","DestinationType":"ImageUploader, FileUploader","RequestType":"POST","RequestURL":"https://x.example.eu/upload","FileFormName":"upload","Arguments":{"file":"$filename$","token":"tok"},"URL":"$json:url$","DeletionURL":"$json:url$/delete/tok","ErrorMessage":"$json:message$"}"#;
+        let out = super::with_raw_links(legacy).unwrap();
+        let up = crate::sxcu::Uploader::parse(&out).unwrap();
+        let ctx = crate::sxcu::Context {
+            response: Some(crate::sxcu::Response {
+                body: r#"{"url":"https:\/\/x.example.eu\/me\/AbC.png"}"#.into(),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let render = |t: &crate::sxcu::Template| t.render(&ctx, crate::sxcu::Escape::None).unwrap();
+        assert_eq!(
+            render(up.url.as_ref().unwrap()),
+            "https://x.example.eu/me/AbC/raw.png"
+        );
+        assert_eq!(
+            render(up.deletion_url.as_ref().unwrap()),
+            "https://x.example.eu/me/AbC.png/delete/tok"
+        );
+        assert!(super::with_raw_links(&out).is_err(), "already patched");
+    }
     use super::*;
     use std::os::unix::fs::PermissionsExt;
 

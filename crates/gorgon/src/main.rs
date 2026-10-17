@@ -92,6 +92,9 @@ enum UploaderCommand {
     List,
     /// Make an imported uploader the default for its kind
     Default { name: String },
+    /// Make an imported XBackBone uploader link to the raw file
+    /// (.../CODE/raw.png) instead of its preview page
+    RawLinks { name: String },
 }
 
 fn autostart_cli(what: &str) -> anyhow::Result<()> {
@@ -164,6 +167,7 @@ fn main() -> ExitCode {
             UploaderCommand::Import { file } => uploader_cli::import(&file),
             UploaderCommand::List => uploader_cli::list(),
             UploaderCommand::Default { name } => uploader_cli::set_default(&name),
+            UploaderCommand::RawLinks { name } => uploader_cli::raw_links(&name),
         }),
     }
 }
