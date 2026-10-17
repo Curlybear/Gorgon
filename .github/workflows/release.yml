@@ -1,10 +1,12 @@
 name: Release
 
-# Push a tag like v0.1.0 to build the .deb and AppImage and publish them
-# as a GitHub release.
+# Push a tag like v0.1.0, or run this workflow by hand on main, to build the
+# .deb and AppImage and publish them as a GitHub release. Run by hand, it tags
+# the commit with the version from crates/gorgon/Cargo.toml.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -23,10 +25,13 @@ jobs:
             file desktop-file-utils libfuse2t64
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: Check the tag matches the version
+      - name: Work out the tag
         run: |
           version=$(sed -n 's/^version = "\(.*\)"/\1/p' crates/gorgon/Cargo.toml | head -n1)
-          test "v$version" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME but Cargo.toml says $version"; exit 1; }
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME but Cargo.toml says $version"; exit 1
+          fi
+          echo "TAG=v$version" >> "$GITHUB_ENV"
       - run: cargo build --release -p gorgon
       - name: Build the .deb
         run: |
@@ -45,5 +50,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" --title "Gorgon ${GITHUB_REF_NAME#v}" --generate-notes \
+          gh release create "$TAG" --target "$GITHUB_SHA" --title "Gorgon ${TAG#v}" \
+            --notes-file <(sed -n "/^## ${TAG#v}/,/^## /p" CHANGELOG.md | sed '1d;$!b;/^## /d') \
             target/debian/*.deb target/appimage/*.AppImage
