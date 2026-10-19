@@ -1170,6 +1170,7 @@ dependencies = [
  "gorgon-core",
  "image",
  "ksni",
+ "libc",
  "notify-rust",
  "serde_json",
  "tokio",

@@ -379,7 +379,7 @@ impl qobject::App {
         self.as_mut().set_image_width(w as i32);
         self.as_mut().set_image_height(h as i32);
         self.as_mut()
-            .set_image_url(QUrl::from(&format!("file://{}", path.display())));
+            .set_image_url(QUrl::from(&gorgon_core::capture::path_to_file_uri(&path)));
         self.as_mut().rust_mut().current = Some(path);
         match mode {
             CaptureMode::Region => self.select_region(),

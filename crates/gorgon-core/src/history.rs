@@ -91,12 +91,10 @@ fn save_to(path: &Path, entries: &[Entry]) -> Result<(), HistoryError> {
         path: path.to_owned(),
         source,
     };
-    if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir).map_err(err)?;
-    }
     let tmp = path.with_extension("json.tmp");
     let text = serde_json::to_string_pretty(entries).expect("history serializes");
-    std::fs::write(&tmp, text).map_err(err)?;
+    // Deletion links carry upload tokens: owner-only.
+    crate::private::write(&tmp, text).map_err(err)?;
     std::fs::rename(&tmp, path).map_err(err)
 }
 

@@ -181,6 +181,7 @@ Window {
                         anchors.leftMargin: 12
                         anchors.verticalCenter: parent.verticalCenter
                         text: modelData.name
+                        textFormat: Text.PlainText
                         color: "#f0f0f0"
                         font.pixelSize: 14
                     }
@@ -279,6 +280,7 @@ Window {
             anchors.rightMargin: 12
             anchors.verticalCenter: parent.verticalCenter
             text: settings.message
+            textFormat: Text.PlainText
             color: settings.messageIsError ? "#ff8a80" : "#7fd68a"
             font.pixelSize: 13
             elide: Text.ElideRight

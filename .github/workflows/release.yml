@@ -3,19 +3,34 @@ name: Release
 # Push a tag like v0.1.0, or run this workflow by hand on main, to build the
 # .deb and AppImage and publish them as a GitHub release. Run by hand, it tags
 # the commit with the version from crates/gorgon/Cargo.toml.
+#
+# The build job runs third-party code (build scripts, cargo-deb, linuxdeploy)
+# with a read-only token; only the small publish job can write to the repo.
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+env:
+  # Dated linuxdeploy releases, checked against these hashes before running.
+  LINUXDEPLOY_URL: https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20251107-1/linuxdeploy-x86_64.AppImage
+  LINUXDEPLOY_SHA256: c20cd71e3a4e3b80c3483cef793cda3f4e990aca14014d23c544ca3ce1270b4d
+  LINUXDEPLOY_QT_URL: https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/1-alpha-20250213-1/linuxdeploy-plugin-qt-x86_64.AppImage
+  LINUXDEPLOY_QT_SHA256: 15106be885c1c48a021198e7e1e9a48ce9d02a86dd0a1848f00bdbf3c1c92724
+  CARGO_DEB_VERSION: 3.8.0
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Install system packages
         run: |
           sudo apt-get update
@@ -23,33 +38,69 @@ jobs:
             build-essential qt6-base-dev qt6-declarative-dev qt6-wayland \
             qml6-module-qtquick qml6-module-qtquick-window qml6-module-qtqml-workerscript \
             file desktop-file-utils libfuse2t64
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       - name: Work out the tag
+        id: tag
         run: |
           version=$(sed -n 's/^version = "\(.*\)"/\1/p' crates/gorgon/Cargo.toml | head -n1)
           if [ "$GITHUB_REF_TYPE" = tag ] && [ "v$version" != "$GITHUB_REF_NAME" ]; then
             echo "tag $GITHUB_REF_NAME but Cargo.toml says $version"; exit 1
           fi
-          echo "TAG=v$version" >> "$GITHUB_ENV"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
       - run: cargo build --release -p gorgon
       - name: Build the .deb
         run: |
-          cargo install cargo-deb --locked
+          cargo install cargo-deb --locked --version "$CARGO_DEB_VERSION"
           cargo deb -p gorgon --no-build
       - name: Build the AppImage
         run: |
           mkdir -p "$RUNNER_TEMP/bin"
-          for tool in linuxdeploy linuxdeploy-plugin-qt; do
-            curl -sSLo "$RUNNER_TEMP/bin/$tool" \
-              "https://github.com/linuxdeploy/$tool/releases/download/continuous/$tool-x86_64.AppImage"
-            chmod +x "$RUNNER_TEMP/bin/$tool"
-          done
+          curl -sSfLo "$RUNNER_TEMP/bin/linuxdeploy" "$LINUXDEPLOY_URL"
+          curl -sSfLo "$RUNNER_TEMP/bin/linuxdeploy-plugin-qt" "$LINUXDEPLOY_QT_URL"
+          sha256sum -c <<EOF
+          $LINUXDEPLOY_SHA256  $RUNNER_TEMP/bin/linuxdeploy
+          $LINUXDEPLOY_QT_SHA256  $RUNNER_TEMP/bin/linuxdeploy-plugin-qt
+          EOF
+          chmod +x "$RUNNER_TEMP/bin/linuxdeploy" "$RUNNER_TEMP/bin/linuxdeploy-plugin-qt"
           PATH="$RUNNER_TEMP/bin:$PATH" packaging/build-appimage.sh
+      - name: Collect the packages
+        run: |
+          mkdir dist
+          cp target/debian/*.deb target/appimage/*.AppImage dist/
+          tag=${{ steps.tag.outputs.tag }}
+          sed -n "/^## ${tag#v}/,/^## /p" CHANGELOG.md | sed '1d;$!b;/^## /d' > notes.md
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release
+          path: |
+            dist/
+            notes.md
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release
+      - name: Write SHA256SUMS
+        working-directory: dist
+        run: sha256sum -- * > SHA256SUMS
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: dist/*
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.build.outputs.tag }}
         run: |
-          gh release create "$TAG" --target "$GITHUB_SHA" --title "Gorgon ${TAG#v}" \
-            --notes-file <(sed -n "/^## ${TAG#v}/,/^## /p" CHANGELOG.md | sed '1d;$!b;/^## /d') \
-            target/debian/*.deb target/appimage/*.AppImage
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Gorgon ${TAG#v}" --notes-file notes.md dist/*

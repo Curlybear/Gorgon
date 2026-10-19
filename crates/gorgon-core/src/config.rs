@@ -1,11 +1,14 @@
 //! User settings, read from `~/.config/gorgon/config.toml`.
 
-use std::path::{Path, PathBuf};
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+};
 
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
-#[serde(default, deny_unknown_fields)]
+#[serde(default)]
 pub struct Config {
     /// Folder captures are saved in.
     pub save_dir: PathBuf,
@@ -31,6 +34,11 @@ pub struct Config {
     pub video_fps: u32,
     /// Frames per second for GIF recordings.
     pub gif_fps: u32,
+    /// Keys Gorgon doesn't know (a typo, or a setting from a newer
+    /// version). They are ignored with a warning, so one bad line doesn't
+    /// throw away every other setting.
+    #[serde(flatten)]
+    pub unknown: BTreeMap<String, toml::Value>,
 }
 
 impl Default for Config {
@@ -51,6 +59,7 @@ impl Default for Config {
             copy_url: true,
             video_fps: 30,
             gif_fps: 15,
+            unknown: BTreeMap::new(),
         }
     }
 }
@@ -93,6 +102,9 @@ impl Config {
             source,
         })?;
         config.save_dir = expand_home(&config.save_dir);
+        for key in config.unknown.keys() {
+            eprintln!("{}: ignoring unknown setting {key:?}", path.display());
+        }
         Ok(config)
     }
 }
@@ -149,13 +161,7 @@ pub fn set_values_in(
             }
         }
     }
-    let write = || {
-        if let Some(dir) = path.parent() {
-            std::fs::create_dir_all(dir)?;
-        }
-        std::fs::write(path, doc.to_string())
-    };
-    write().map_err(|source| ConfigError::Read {
+    crate::private::write(path, doc.to_string()).map_err(|source| ConfigError::Read {
         path: path.to_owned(),
         source,
     })
@@ -205,13 +211,19 @@ mod tests {
     }
 
     #[test]
-    fn unknown_keys_are_rejected() {
+    fn unknown_keys_are_ignored() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("config.toml");
-        std::fs::write(&path, "save_folder = \"/tmp\"\n").unwrap();
-        assert!(matches!(
-            Config::load_from(&path),
-            Err(ConfigError::Parse { .. })
-        ));
+        std::fs::write(
+            &path,
+            "save_folder = \"/tmp\"\nimage_uploader = \"XBackBone\"\n",
+        )
+        .unwrap();
+        let config = Config::load_from(&path).unwrap();
+        assert_eq!(config.image_uploader.as_deref(), Some("XBackBone"));
+        assert_eq!(
+            config.unknown.keys().collect::<Vec<_>>(),
+            vec!["save_folder"]
+        );
     }
 }

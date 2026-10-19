@@ -1,4 +1,6 @@
-# `cargo deny check licenses`: every dependency must be under a licence that
+# `cargo deny check licenses advisories`.
+#
+# Licences: every dependency must be under a licence that
 # can be combined with GPL-3.0. gifski (AGPL-3.0) is the one copyleft
 # exception, noted in the README.
 [licenses]
@@ -9,3 +11,10 @@ allow = [
 ]
 confidence-threshold = 0.9
 private = { ignore = true }
+
+# Advisories: fail on any known vulnerability in Cargo.lock. "Unmaintained"
+# notices only count for crates Gorgon depends on directly; deeper ones
+# (ttf-parser through cosmic-text, zvariant through zbus) can only be fixed
+# upstream.
+[advisories]
+unmaintained = "workspace"

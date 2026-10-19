@@ -39,6 +39,7 @@ Item {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: root.label
+            textFormat: Text.PlainText
             color: "#f0f0f0"
             font.pixelSize: 14
         }

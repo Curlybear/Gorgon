@@ -37,12 +37,38 @@ pub async fn screenshot(interactive: bool) -> Result<PathBuf, CaptureError> {
 }
 
 /// Gorgon's private scratch folder, emptied by the session on logout.
+/// Without `XDG_RUNTIME_DIR` (cron, ssh) it falls back to a per-user folder
+/// in `/tmp`, which must not be one another user prepared.
 pub fn runtime_dir() -> std::io::Result<PathBuf> {
-    let dir = dirs::runtime_dir()
-        .unwrap_or_else(std::env::temp_dir)
-        .join("gorgon");
-    std::fs::create_dir_all(&dir)?;
-    Ok(dir)
+    match dirs::runtime_dir() {
+        Some(dir) => {
+            let dir = dir.join("gorgon");
+            crate::private::create_dir(&dir)?;
+            Ok(dir)
+        }
+        None => {
+            // SAFETY: getuid has no preconditions and can't fail.
+            let uid = unsafe { libc::getuid() };
+            let dir = std::env::temp_dir().join(format!("gorgon-{uid}"));
+            crate::private::ensure_own_dir(&dir)?;
+            Ok(dir)
+        }
+    }
+}
+
+/// Turns `/a b#1.png` into `file:///a%20b%231.png`, for Qt and other URL
+/// readers. Without the encoding, `#`, `%` or `?` in a name break the URL.
+pub fn path_to_file_uri(path: &Path) -> String {
+    use std::os::unix::ffi::OsStrExt;
+    let mut out = String::from("file://");
+    for &b in path.as_os_str().as_bytes() {
+        if b.is_ascii_alphanumeric() || b"/-._~".contains(&b) {
+            out.push(b as char);
+        } else {
+            out.push_str(&format!("%{b:02X}"));
+        }
+    }
+    out
 }
 
 /// Turns `file:///a%20b.png` into `/a b.png`.
@@ -88,5 +114,9 @@ mod tests {
         );
         assert_eq!(file_uri_to_path("https://example.com/a.png"), None);
         assert_eq!(file_uri_to_path("file:///bad%2"), None);
+        let odd = Path::new("/home/you/Shots #1/100% é?.png");
+        let uri = path_to_file_uri(odd);
+        assert_eq!(uri, "file:///home/you/Shots%20%231/100%25%20%C3%A9%3F.png");
+        assert_eq!(file_uri_to_path(&uri).as_deref(), Some(odd));
     }
 }

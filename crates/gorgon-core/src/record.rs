@@ -126,10 +126,7 @@ pub async fn open_cast() -> Result<Cast, RecordError> {
         Err(e) => return Err(e.into()),
     };
     if let (Some(token), Some(path)) = (streams.restore_token(), token_path()) {
-        if let Some(dir) = path.parent() {
-            let _ = std::fs::create_dir_all(dir);
-        }
-        let _ = std::fs::write(path, token);
+        let _ = crate::private::write(&path, token);
     }
     let stream = streams
         .streams()
@@ -310,7 +307,13 @@ pub fn start(
         unsafe {
             use std::os::unix::process::CommandExt;
             command.pre_exec(move || {
-                if libc::dup2(raw, 3) < 0 {
+                if raw == 3 {
+                    // dup2(3, 3) does nothing, close-on-exec included: clear it.
+                    let flags = libc::fcntl(3, libc::F_GETFD);
+                    if flags < 0 || libc::fcntl(3, libc::F_SETFD, flags & !libc::FD_CLOEXEC) < 0 {
+                        return Err(std::io::Error::last_os_error());
+                    }
+                } else if libc::dup2(raw, 3) < 0 {
                     return Err(std::io::Error::last_os_error());
                 }
                 Ok(())
