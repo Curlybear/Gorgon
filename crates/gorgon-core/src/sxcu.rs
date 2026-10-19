@@ -84,6 +84,9 @@ pub struct Uploader {
     pub thumbnail_url: Option<Template>,
     pub deletion_url: Option<Template>,
     pub error_message: Option<Template>,
+    /// The request goes over plain `http://`, so tokens and files travel
+    /// unencrypted. Import warns about it.
+    pub plain_http: bool,
 }
 
 /// The file as written, before validation. Field names follow ShareX.
@@ -124,6 +127,7 @@ impl Uploader {
         let syntax = Syntax {
             legacy,
             regex_list: &raw.regex_list,
+            depth: 0,
         };
         let template = |field: &str, text: &str| {
             Template::parse_with(text, &syntax).map_err(|message| SxcuError::Syntax {
@@ -211,10 +215,15 @@ impl Uploader {
                     .to_owned()
             });
 
+        let plain_http = request_url
+            .trim_start()
+            .get(..7)
+            .is_some_and(|s| s.eq_ignore_ascii_case("http://"));
         Ok(Self {
             name,
             destinations,
             method,
+            plain_http,
             request_url: template("RequestURL", &request_url)?,
             parameters,
             headers: pairs("Headers", &raw.headers)?,
@@ -253,10 +262,16 @@ fn is_legacy_version(version: &str) -> bool {
         .is_none_or(|major| major < 13)
 }
 
+#[derive(Clone, Copy)]
 struct Syntax<'a> {
     legacy: bool,
     regex_list: &'a [String],
+    /// How deep inside nested `{function:...}` arguments we are.
+    depth: usize,
 }
+
+/// Deeper nesting is refused, so a hostile file can't overflow the stack.
+const MAX_DEPTH: usize = 32;
 
 /// A text with `{function:argument}` parts filled in at upload time.
 #[derive(Debug, Clone, PartialEq)]
@@ -322,11 +337,15 @@ impl Template {
             &Syntax {
                 legacy: false,
                 regex_list: &[],
+                depth: 0,
             },
         )
     }
 
     fn parse_with(text: &str, syntax: &Syntax) -> Result<Self, String> {
+        if syntax.depth > MAX_DEPTH {
+            return Err(format!("templates nested more than {MAX_DEPTH} deep"));
+        }
         let mut parts = Vec::new();
         let mut literal = String::new();
         let chars: Vec<char> = text.chars().collect();
@@ -441,7 +460,11 @@ fn parse_call(chars: &[char], syntax: &Syntax) -> Result<Option<(Call, usize)>, 
         return Ok(None);
     }
 
-    let sub = |text: &str| Template::parse_with(text, syntax);
+    let inner = Syntax {
+        depth: syntax.depth + 1,
+        ..*syntax
+    };
+    let sub = |text: &str| Template::parse_with(text, &inner);
     let needs_arg = |what: &str| {
         arg.clone()
             .filter(|a| !a.is_empty())
@@ -861,5 +884,27 @@ mod tests {
         assert_eq!(up.method, Method::Get);
         assert_eq!(up.body, Body::None);
         assert_eq!(up.parameters.len(), 1);
+    }
+
+    #[test]
+    fn deep_nesting_is_refused() {
+        let ok = format!("{}x{}", "{base64:".repeat(10), "}".repeat(10));
+        assert!(Template::parse(&ok).is_ok());
+        let deep = format!("{}x{}", "{base64:".repeat(5000), "}".repeat(5000));
+        let err = Template::parse(&deep).unwrap_err();
+        assert!(err.contains("nested"), "{err}");
+    }
+
+    #[test]
+    fn plain_http_is_flagged() {
+        let parse = |url: &str| {
+            Uploader::parse(&format!(
+                r#"{{"RequestURL":"{url}","FileFormName":"f","URL":"{{response}}"}}"#
+            ))
+            .unwrap()
+        };
+        assert!(parse("http://up.example.com/upload").plain_http);
+        assert!(parse("HTTP://up.example.com/upload").plain_http);
+        assert!(!parse("https://up.example.com/upload").plain_http);
     }
 }

@@ -27,7 +27,7 @@ pub fn saved(path: &Path, copied: bool) {
             } else {
                 "Screenshot captured"
             })
-            .body(&body)
+            .body(&escape(&body))
             .icon(crate::icons::NAME)
             .action("default", "Open")
             .action("open", "Open");
@@ -80,7 +80,7 @@ pub fn uploaded(path: &Path, links: &Links, copied: bool) {
             } else {
                 "Screenshot uploaded"
             })
-            .body(&body)
+            .body(&escape(&body))
             .icon(crate::icons::NAME)
             .image_path(&path.display().to_string())
             .action("default", "Open link")
@@ -120,7 +120,7 @@ pub fn upload_failed(path: &Path, message: &str, id: Option<u64>) {
             .appname(APP_NAME)
             .hint(Hint::DesktopEntry(crate::icons::NAME.into()))
             .summary("Upload failed")
-            .body(&format!("{message}\nSaved to {}", path.display()))
+            .body(&escape(&format!("{message}\nSaved to {}", path.display())))
             .icon("dialog-error")
             .action("retry", "Retry")
             .action("folder", "Show in folder")
@@ -204,7 +204,7 @@ pub fn error(message: &str) {
             .appname(APP_NAME)
             .hint(Hint::DesktopEntry(crate::icons::NAME.into()))
             .summary("Capture failed")
-            .body(&message)
+            .body(&escape(&message))
             .icon("dialog-error")
             .show()
         {
@@ -218,7 +218,19 @@ fn is_recording_file(path: &Path) -> bool {
         .is_some_and(|e| e == "mp4" || e == "webm" || e == "gif")
 }
 
+/// Notification servers may read bodies as markup (`<b>`, `<a>`, `<img>`),
+/// and bodies carry server replies and file names.
+fn escape(text: &str) -> String {
+    text.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
 fn open_url(url: &str) {
+    if !gorgon_core::upload::is_web_link(url) {
+        eprintln!("not opening {url}: not a web link");
+        return;
+    }
     if let Err(e) = std::process::Command::new("xdg-open").arg(url).spawn() {
         eprintln!("could not open {url}: {e}");
     }

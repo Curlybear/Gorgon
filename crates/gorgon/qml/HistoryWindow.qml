@@ -34,6 +34,12 @@ Window {
         function onHistoryUpdated() { history.reload() }
     }
 
+    // Links come from the upload server: open web links only.
+    function openLink(url) {
+        if (/^https?:\/\/\S+$/i.test(url))
+            Qt.openUrlExternally(url)
+    }
+
     function say(text) {
         toast = text
         toastTimer.restart()
@@ -158,6 +164,7 @@ Window {
                 Text {
                     width: parent.width
                     text: row.e.name || ""
+                    textFormat: Text.PlainText
                     color: "#f0f0f0"
                     font.pixelSize: 14
                     elide: Text.ElideMiddle
@@ -173,6 +180,7 @@ Window {
                     text: row.e.url ? row.e.url
                         : row.e.error ? "Upload failed: " + row.e.error
                         : "Not uploaded"
+                    textFormat: Text.PlainText
                     color: row.e.url ? "#7aa7ff" : row.e.error ? "#ff8a80" : "#6b6f77"
                     font.pixelSize: 13
                     elide: Text.ElideRight
@@ -180,7 +188,7 @@ Window {
                         anchors.fill: parent
                         enabled: !!row.e.url
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: Qt.openUrlExternally(row.e.url)
+                        onClicked: win.openLink(row.e.url)
                     }
                 }
 
@@ -201,7 +209,7 @@ Window {
                     ToolButton {
                         visible: !!row.e.url
                         label: "Open link"
-                        onClicked: Qt.openUrlExternally(row.e.url)
+                        onClicked: win.openLink(row.e.url)
                     }
                     ToolButton {
                         visible: row.e.exists && !row.e.url
@@ -225,7 +233,7 @@ Window {
                         visible: !!row.e.deletionUrl
                         label: "Delete online"
                         hint: "Opens the uploader's deletion link"
-                        onClicked: Qt.openUrlExternally(row.e.deletionUrl)
+                        onClicked: win.openLink(row.e.deletionUrl)
                     }
                     ToolButton {
                         label: "Forget"

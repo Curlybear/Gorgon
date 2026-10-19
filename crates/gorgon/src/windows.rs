@@ -92,7 +92,7 @@ use std::{path::PathBuf, pin::Pin};
 
 use cxx_qt_lib::QString;
 use gorgon_core::{
-    capture::file_uri_to_path,
+    capture::{file_uri_to_path, path_to_file_uri},
     config::{self, Config},
     history, naming, uploaders,
 };
@@ -128,8 +128,8 @@ impl qobject::HistoryModel {
                     "time": e.time,
                     "path": e.path,
                     "name": e.path.file_name().map(|n| n.to_string_lossy()),
-                    "fileUrl": format!("file://{}", e.path.display()),
-                    "folderUrl": e.path.parent().map(|d| format!("file://{}", d.display())),
+                    "fileUrl": path_to_file_uri(&e.path),
+                    "folderUrl": e.path.parent().map(path_to_file_uri),
                     "exists": e.path.exists(),
                     "video": ext == "mp4" || ext == "webm",
                     "editable": ext == "png" || ext == "jpg" || ext == "jpeg",
@@ -368,8 +368,13 @@ impl qobject::SettingsModel {
                         u.name
                     );
                 }
+                if u.plain_http {
+                    msg.push_str(
+                        " Warning: it uses plain http://, so your token and files travel unencrypted.",
+                    );
+                }
                 self.as_mut().load_uploaders();
-                self.tell(&msg, false);
+                self.tell(&msg, u.plain_http);
             }
             Err(e) => self.tell(&e.to_string(), true),
         }

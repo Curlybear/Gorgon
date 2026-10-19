@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Security: uploads no longer follow redirects to another host (which would carry API keys along), links from the server open only when they are `http`/`https`, server text is shown as plain text, and history, settings and the screen-sharing token are saved readable only by you. Importing an `http://` uploader warns that it is unencrypted.
+- Releases are built without write access, use pinned and checksummed linuxdeploy, and come with `SHA256SUMS` and a build attestation. See SECURITY.md to report a problem.
+- An unknown key in config.toml is now ignored with a warning instead of dropping every setting.
+- Captures whose path contains `#` or `%` open in the editor and History again.
+
 ## 0.1.0 (2026-10-17)
 
 The first release.

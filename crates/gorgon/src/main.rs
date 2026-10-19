@@ -126,9 +126,14 @@ fn autostart_cli(what: &str) -> anyhow::Result<()> {
 /// from one (its contents live in a mount that goes away with it), else
 /// this binary.
 pub fn self_exe() -> std::io::Result<std::path::PathBuf> {
-    match std::env::var_os("APPIMAGE") {
-        Some(appimage) if !appimage.is_empty() => Ok(appimage.into()),
-        _ => std::env::current_exe(),
+    let exe = std::env::current_exe()?;
+    // AppImages export APPIMAGE to everything they start, so trust it only
+    // when this binary really runs from that AppImage's mount ($APPDIR).
+    let appimage = std::env::var_os("APPIMAGE").filter(|a| !a.is_empty());
+    let appdir = std::env::var_os("APPDIR").filter(|a| !a.is_empty());
+    match (appimage, appdir) {
+        (Some(appimage), Some(appdir)) if exe.starts_with(&appdir) => Ok(appimage.into()),
+        _ => Ok(exe),
     }
 }
 

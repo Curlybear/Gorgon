@@ -1,6 +1,7 @@
 //! `gorgon capture ...` and `gorgon edit ...`: ask the daemon, starting it if needed.
 
 use std::{
+    os::unix::fs::OpenOptionsExt,
     path::Path,
     process::{Command, Stdio},
     time::{Duration, Instant},
@@ -90,6 +91,8 @@ fn start_daemon() -> Result<()> {
     let log = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW)
         .open(&log_path)
         .with_context(|| format!("could not open {}", log_path.display()))?;
     Command::new(exe)

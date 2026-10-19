@@ -69,6 +69,9 @@ pub fn import(file: &Path) -> Result<()> {
         kind(&uploader),
         stored.display()
     );
+    if uploader.plain_http {
+        eprintln!("warning: it uses plain http://, so your token and files travel unencrypted");
+    }
     let config = Config::load()?;
     if uploader.uploads_files() && config.image_uploader.is_none() {
         let path = config::set_value("image_uploader", uploader.name.as_str())?;

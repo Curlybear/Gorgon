@@ -27,6 +27,8 @@ pub enum UploadError {
     },
     #[error("{uploader} didn't return a URL (response: {body})")]
     NoUrl { uploader: String, body: String },
+    #[error("{uploader} returned a link Gorgon won't open: {link}")]
+    BadLink { uploader: String, link: String },
 }
 
 /// What is being sent.
@@ -250,11 +252,28 @@ pub fn parse_response(
         uploader: uploader.name.clone(),
         body: snippet(&response.body),
     })?;
+    if !is_web_link(&url) {
+        return Err(UploadError::BadLink {
+            uploader: uploader.name.clone(),
+            link: snippet(&url),
+        });
+    }
+    // The extra links are optional: drop one that isn't a web link rather
+    // than failing an upload that worked.
     Ok(Uploaded {
         url,
-        thumbnail_url: fill(&uploader.thumbnail_url)?,
-        deletion_url: fill(&uploader.deletion_url)?,
+        thumbnail_url: fill(&uploader.thumbnail_url)?.filter(|l| is_web_link(l)),
+        deletion_url: fill(&uploader.deletion_url)?.filter(|l| is_web_link(l)),
     })
+}
+
+/// Whether `link` is an `http://` or `https://` link. Links come from the
+/// server and end up opened with a click, so `file:` and custom schemes
+/// (which hand arguments to other programs) are refused.
+pub fn is_web_link(link: &str) -> bool {
+    let lower = link.get(..8).unwrap_or(link).to_ascii_lowercase();
+    (lower.starts_with("https://") || lower.starts_with("http://"))
+        && !link.chars().any(char::is_whitespace)
 }
 
 fn snippet(body: &str) -> String {
@@ -269,13 +288,40 @@ fn snippet(body: &str) -> String {
     s
 }
 
+/// The most of a response that is read; the rest is ignored. Upload APIs
+/// answer with a few hundred bytes of JSON.
+const MAX_RESPONSE: usize = 1024 * 1024;
+
 fn client() -> reqwest::Client {
     // rustls needs a crypto provider; ignore "already installed".
     let _ = rustls::crypto::ring::default_provider().install_default();
     reqwest::Client::builder()
         .timeout(Duration::from_secs(120))
+        .redirect(reqwest::redirect::Policy::custom(same_origin_redirects))
         .build()
         .expect("HTTP client")
+}
+
+/// Follows redirects only within the same scheme, host and port. Headers
+/// like Kutt's `X-API-KEY` and the uploaded form (with its token) would
+/// otherwise go along to wherever the server points.
+fn same_origin_redirects(attempt: reqwest::redirect::Attempt) -> reqwest::redirect::Action {
+    let origin = |u: &reqwest::Url| {
+        (
+            u.scheme().to_owned(),
+            u.host_str().map(str::to_owned),
+            u.port_or_known_default(),
+        )
+    };
+    let from = attempt.previous().last().map(origin);
+    if attempt.previous().len() > 5 {
+        attempt.error("too many redirects")
+    } else if from.is_some_and(|f| f != origin(attempt.url())) {
+        let to = attempt.url().host_str().unwrap_or("?").to_owned();
+        attempt.error(format!("refused a redirect to {to}"))
+    } else {
+        attempt.follow()
+    }
 }
 
 /// Sends a built request and returns the raw response.
@@ -312,7 +358,7 @@ pub async fn send(request: Request) -> Result<Response, reqwest::Error> {
             req.multipart(form)
         }
     };
-    let resp = req.send().await?;
+    let mut resp = req.send().await?;
     let status = resp.status().as_u16();
     let url = resp.url().to_string();
     let headers = resp
@@ -325,7 +371,15 @@ pub async fn send(request: Request) -> Result<Response, reqwest::Error> {
             )
         })
         .collect();
-    let body = resp.text().await?;
+    let mut bytes = Vec::new();
+    while let Some(chunk) = resp.chunk().await? {
+        let room = MAX_RESPONSE - bytes.len();
+        bytes.extend_from_slice(&chunk[..chunk.len().min(room)]);
+        if bytes.len() == MAX_RESPONSE {
+            break;
+        }
+    }
+    let body = String::from_utf8_lossy(&bytes).into_owned();
     Ok(Response {
         status,
         url,
@@ -510,5 +564,106 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(err, UploadError::WrongKind { .. }));
+    }
+
+    #[tokio::test]
+    async fn redirects_to_another_host_are_refused() {
+        let elsewhere = MockServer::start().await;
+        Mock::given(method("POST"))
+            .respond_with(
+                ResponseTemplate::new(201)
+                    .set_body_json(serde_json::json!({ "link": "https://x.y/z" })),
+            )
+            .mount(&elsewhere)
+            .await;
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .respond_with(
+                ResponseTemplate::new(307)
+                    .insert_header("Location", format!("{}/api/v2/links", elsewhere.uri())),
+            )
+            .mount(&server)
+            .await;
+        let err = shorten(&kutt(&server.uri()), "https://a.b")
+            .await
+            .unwrap_err();
+        assert!(matches!(err, UploadError::Network { .. }), "{err}");
+        assert!(elsewhere.received_requests().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn redirects_on_the_same_host_are_followed() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/old"))
+            .respond_with(ResponseTemplate::new(308).insert_header("Location", "/api/v2/links"))
+            .mount(&server)
+            .await;
+        Mock::given(method("POST"))
+            .and(path("/api/v2/links"))
+            .and(header("X-API-KEY", "secret"))
+            .respond_with(
+                ResponseTemplate::new(201)
+                    .set_body_json(serde_json::json!({ "link": "https://k.example.com/q" })),
+            )
+            .mount(&server)
+            .await;
+        let mut up = kutt(&server.uri());
+        up.request_url = Template::parse(&format!("{}/old", server.uri())).unwrap();
+        assert_eq!(
+            shorten(&up, "https://a.b").await.unwrap(),
+            "https://k.example.com/q"
+        );
+    }
+
+    fn response(body: &str) -> Response {
+        Response {
+            status: 200,
+            url: "https://k.example.com/api".into(),
+            headers: vec![],
+            body: body.into(),
+        }
+    }
+
+    #[test]
+    fn only_web_links_are_accepted() {
+        let up = kutt("https://k.example.com");
+        for bad in [
+            "file:///etc/passwd",
+            "steam://run/1",
+            "javascript:alert(1)",
+            "https://a.b/x y",
+        ] {
+            let body = serde_json::json!({ "link": bad }).to_string();
+            let err = parse_response(&up, None, response(&body)).unwrap_err();
+            assert!(matches!(err, UploadError::BadLink { .. }), "{bad}: {err}");
+        }
+        let body = serde_json::json!({ "link": "HTTPS://k.example.com/q" }).to_string();
+        assert!(parse_response(&up, None, response(&body)).is_ok());
+    }
+
+    #[test]
+    fn bad_extra_links_are_dropped() {
+        let mut up = xbackbone("https://xbb.example.com");
+        up.deletion_url = Some(Template::parse("file:///x").unwrap());
+        let body = serde_json::json!({ "url": "https://xbb.example.com/Ab" }).to_string();
+        let got = parse_response(&up, None, response(&body)).unwrap();
+        assert_eq!(got.deletion_url, None);
+        assert_eq!(
+            got.thumbnail_url.as_deref(),
+            Some("https://xbb.example.com/Ab/raw")
+        );
+    }
+
+    #[tokio::test]
+    async fn huge_responses_are_cut() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("a".repeat(3 * MAX_RESPONSE)))
+            .mount(&server)
+            .await;
+        let up = kutt(&server.uri());
+        let request = build(&up, Input::Text("https://a.b")).unwrap();
+        assert_eq!(send(request).await.unwrap().body.len(), MAX_RESPONSE);
     }
 }
