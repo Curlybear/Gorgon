@@ -161,6 +161,13 @@ interactive prompts are refused on import, with the reason.
 
 **Shortcuts never got registered.** Your desktop needs the Global Shortcuts portal (GNOME 48 or newer, KDE, Hyprland). Elsewhere, bind `gorgon capture region` and friends in your desktop or compositor settings.
 
+**Captures fail, or GNOME's screenshot dialog opens, when Gorgon was started at login.** GNOME stores the "take screenshots without asking" permission per app, and names an app after how it was launched, so Gorgon started at login may have none even when it works from a terminal. Gorgon then falls back to GNOME's screenshot dialog. To allow silent captures, run:
+
+```sh
+busctl --user call org.freedesktop.impl.portal.PermissionStore /org/freedesktop/impl/portal/PermissionStore \
+  org.freedesktop.impl.portal.PermissionStore SetPermission sbssas screenshot true screenshot gorgon 1 yes
+```
+
 **Recording says GStreamer or a plugin is missing.** Install the packages listed under [Recording](#recording). The error names the missing piece.
 
 **The copied image or link isn't on the clipboard.** On GNOME, a background app can only set the clipboard briefly while one of its windows has focus. If a copy fails, the notification's Copy link button tries again.

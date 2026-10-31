@@ -2,12 +2,17 @@
 
 use std::path::{Path, PathBuf};
 
-use ashpd::desktop::screenshot::Screenshot;
+use ashpd::desktop::{screenshot::Screenshot, ResponseError};
 
 #[derive(Debug, thiserror::Error)]
 pub enum CaptureError {
     #[error("the screenshot portal failed: {0}")]
     Portal(#[from] ashpd::Error),
+    #[error(
+        "the desktop refused the screenshot. See Troubleshooting in Gorgon's README \
+         to allow it"
+    )]
+    Refused,
     #[error("the portal returned {0}, which isn't a local file")]
     NotLocal(String),
     #[error("could not move the screenshot: {0}")]
@@ -20,12 +25,18 @@ pub enum CaptureError {
 /// Portals save the image wherever they like (GNOME uses `~/Pictures`), so the
 /// file is moved into Gorgon's runtime folder; the caller owns it from then on.
 pub async fn screenshot(interactive: bool) -> Result<PathBuf, CaptureError> {
-    let response = Screenshot::request()
-        .interactive(interactive)
-        .modal(false)
-        .send()
-        .await?
-        .response()?;
+    let response = match request(interactive).await {
+        // GNOME refuses a silent screenshot, without asking, to an app it has
+        // no stored permission for. Gorgon started at login is such an app
+        // (it is named after how it was launched). The desktop's own
+        // screenshot dialog needs no permission, so offer that instead.
+        Err(ashpd::Error::Response(ResponseError::Other)) if !interactive => request(true).await,
+        other => other,
+    };
+    let response = match response {
+        Err(ashpd::Error::Response(ResponseError::Other)) => return Err(CaptureError::Refused),
+        other => other?,
+    };
     let uri = response.uri().as_str();
     let source = file_uri_to_path(uri).ok_or_else(|| CaptureError::NotLocal(uri.to_owned()))?;
     let dest = runtime_dir()?.join(format!(
@@ -34,6 +45,15 @@ pub async fn screenshot(interactive: bool) -> Result<PathBuf, CaptureError> {
     ));
     move_file(&source, &dest)?;
     Ok(dest)
+}
+
+async fn request(interactive: bool) -> ashpd::Result<Screenshot> {
+    Screenshot::request()
+        .interactive(interactive)
+        .modal(false)
+        .send()
+        .await?
+        .response()
 }
 
 /// Gorgon's private scratch folder, emptied by the session on logout.
